@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plans & Upgrades | Dream XR</title>
+    
+    <!-- Load Configuration Files -->
+    <script src="secrets/firebase-config.js"></script>
+    <script src="secrets/promo-codes.js"></script> <!-- Live Promo Codes -->
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'pulse-glow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'typing': 'typing 1.2s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite',
+                        'shimmer': 'shimmer 2s infinite linear',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    },
+                    keyframes: {
+                        typing: { '0%': { width: '0' }, '100%': { width: '160px' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#22d3ee' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
+                        shimmer: { '100%': { transform: 'translateX(100%)' } },
+                        slideUp: { '0%': { opacity: 0, transform: 'translateY(40px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.5); }
+        .neon-input:focus-within { box-shadow: inset 0 0 15px rgba(34, 211, 238, 0.15); }
+        
+        /* Smooth price transition */
+        .price-text { transition: color 0.3s ease, transform 0.3s ease; }
+        .price-bump { transform: scale(1.1); color: #4ade80; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:scale-105 transition-transform">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-cyan-400 animate-typing" style="animation: typing 1s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">Dream XR</h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a href="chemistry.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="flask-conical" class="w-5 h-5 group-hover:text-cyan-400 transition-colors animate-float"></i>
+                <span class="font-semibold text-sm">Chemistry Lab</span>
+            </a>
+            <a href="physics.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a href="bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors animate-pulse"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </a>
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Account</p>
+            
+            <!-- Active Plans Tab -->
+            <a href="plans.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shadow-[inset_0_0_15px_rgba(234,179,8,0.1)] transition-all">
+                <i data-lucide="credit-card" class="w-5 h-5"></i>
+                <span class="font-bold text-sm">Plans & Upgrade</span>
+            </a>
+            
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="user" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">My Profile</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
+                    <i data-lucide="zap" class="w-6 h-6 text-yellow-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">Upgrade Your Reality</h2>
+                    <p class="text-xs text-yellow-400 font-bold uppercase tracking-widest mt-0.5">Global Launch Sale - 50% Off</p>
+                </div>
+            </div>
+
+            <!-- Right side: Notifications & Profile -->
+            <div class="flex items-center gap-6 ml-auto">
+                <a href="notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:animate-[ring_1s_ease-in-out]"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </a>
+                <a href="profile.html" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center overflow-hidden shadow-[0_0_10px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform ml-2">
+                    <i data-lucide="user" class="w-5 h-5 text-purple-300"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- SCROLLABLE CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+            <div class="max-w-6xl mx-auto flex flex-col gap-8 animate-slide-up opacity-0" style="animation-fill-mode: forwards;">
+                
+                <!-- Promo Code & Banner Section -->
+                <div class="bg-gradient-to-r from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div>
+                        <h3 class="text-2xl font-extrabold text-white mb-2 flex items-center gap-3">
+                            <i data-lucide="tag" class="text-cyan-400 w-6 h-6"></i> Have a Promo Code?
+                        </h3>
+                        <p class="text-slate-400 text-sm font-medium">Apply a valid creator code to get an <span class="text-white font-bold">additional</span> discount on top of our 50% launch sale!</p>
+                    </div>
+                    
+                    <div class="w-full md:w-auto flex items-center gap-3">
+                        <div class="relative neon-input rounded-xl overflow-hidden flex-1 md:w-64">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                <i data-lucide="ticket" class="w-4 h-4"></i>
+                            </div>
+                            <input type="text" id="promo-input" placeholder="Enter code here" class="w-full bg-black/40 border border-white/10 focus:border-cyan-400 rounded-xl pl-10 pr-4 py-3.5 text-white transition-all outline-none font-bold uppercase placeholder:normal-case placeholder:font-medium text-sm">
+                        </div>
+                        <button onclick="applyPromoCode()" class="px-6 py-3.5 bg-white/10 hover:bg-cyan-500/20 text-white hover:text-cyan-400 border border-white/10 hover:border-cyan-500/50 rounded-xl font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plans Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    <!-- 1. FREE PLAN -->
+                    <div class="bg-slate-900/50 backdrop-blur-md border border-slate-700 hover:border-slate-500 rounded-[2.5rem] p-8 shadow-lg flex flex-col transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden">
+                        <div class="mb-8">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-bold uppercase tracking-widest mb-4 border border-slate-700">
+                                Standard Plan
+                            </div>
+                            <h3 class="text-3xl font-extrabold text-white mb-2">Free</h3>
+                            <p class="text-slate-400 text-sm h-10">Perfect for exploring the basics of the virtual academy.</p>
+                        </div>
+                        
+                        <div class="mb-8">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-5xl font-extrabold text-white">₹0</span>
+                                <span class="text-slate-500 font-medium">/mo</span>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col gap-4 mb-8">
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-slate-500 mt-0.5"></i><span class="text-slate-300 text-sm">Basic Chemistry Sandbox</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-slate-500 mt-0.5"></i><span class="text-slate-300 text-sm">15 AI Prompts per minute</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-slate-500 mt-0.5"></i><span class="text-slate-300 text-sm">Standard 3D Render Quality</span></div>
+                            <div class="flex items-start gap-3 opacity-40"><i data-lucide="x" class="w-5 h-5 text-red-400 mt-0.5"></i><span class="text-slate-400 text-sm line-through">Biology & Physics Labs</span></div>
+                            <div class="flex items-start gap-3 opacity-40"><i data-lucide="x" class="w-5 h-5 text-red-400 mt-0.5"></i><span class="text-slate-400 text-sm line-through">Cloud Sync & History</span></div>
+                        </div>
+
+                        <button id="free-btn" disabled class="w-full py-4 bg-slate-800 text-slate-400 rounded-xl font-bold cursor-not-allowed border border-slate-700">
+                            Current Plan
+                        </button>
+                    </div>
+
+                    <!-- 2. PRO PLAN (Most Popular) -->
+                    <div class="bg-slate-900/80 backdrop-blur-xl border-2 border-cyan-500 rounded-[2.5rem] p-8 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex flex-col transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden transform lg:-translate-y-4">
+                        <!-- Glow effect -->
+                        <div class="absolute top-[-50px] right-[-50px] w-[150px] h-[150px] bg-cyan-500/30 blur-3xl rounded-full"></div>
+                        
+                        <div class="absolute top-0 inset-x-0 bg-cyan-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-widest py-1.5 text-center shadow-md z-10">
+                            Most Popular
+                        </div>
+
+                        <div class="mb-8 mt-4">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-xs font-bold uppercase tracking-widest mb-4 border border-cyan-500/30">
+                                <i data-lucide="zap" class="w-3.5 h-3.5 fill-current"></i> Pro
+                            </div>
+                            <h3 class="text-3xl font-extrabold text-white mb-2">Pro Scholar</h3>
+                            <p class="text-slate-400 text-sm h-10">Unlock the full power of Dream XR with advanced modules.</p>
+                        </div>
+                        
+                        <div class="mb-8">
+                            <div class="flex items-center gap-3 mb-1">
+                                <span class="text-xl text-slate-500 font-bold line-through decoration-red-500/50 decoration-2">₹1999</span>
+                                <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest" id="pro-discount-badge">-50% Off</span>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-5xl font-extrabold text-cyan-400 price-text" id="pro-price">₹999</span>
+                                <span class="text-slate-500 font-medium">/mo</span>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col gap-4 mb-8 relative z-10">
+                            <div class="flex items-start gap-3"><i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400 mt-0.5"></i><span class="text-white font-medium text-sm">Everything in Free</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400 mt-0.5"></i><span class="text-white font-medium text-sm">Biology & Physics Labs Unlocked</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400 mt-0.5"></i><span class="text-white font-medium text-sm">100 AI Prompts per minute</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400 mt-0.5"></i><span class="text-white font-medium text-sm">High-Res 3D Models & Lighting</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check-circle-2" class="w-5 h-5 text-cyan-400 mt-0.5"></i><span class="text-white font-medium text-sm">Cloud Sync & Lab History</span></div>
+                        </div>
+
+                        <!-- REDIRECTS TO PRO.HTML CHECKOUT -->
+                        <button id="pro-btn" onclick="redirectToCheckout('Pro')" class="relative w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-extrabold shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all hover:-translate-y-1 active:scale-95 group/btn overflow-hidden z-10">
+                            <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover/btn:animate-shimmer"></div>
+                            <span class="relative z-10" id="pro-btn-text">Upgrade to Pro</span>
+                        </button>
+                    </div>
+
+                    <!-- 3. ULTRA PLAN -->
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-purple-500/30 hover:border-purple-400/60 rounded-[2.5rem] p-8 shadow-lg flex flex-col transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <i data-lucide="infinity" class="w-32 h-32 text-purple-400 -mr-10 -mt-10"></i>
+                        </div>
+                        
+                        <div class="mb-8">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-bold uppercase tracking-widest mb-4 border border-purple-500/30">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Ultra
+                            </div>
+                            <h3 class="text-3xl font-extrabold text-white mb-2">Ultra Vision</h3>
+                            <p class="text-slate-400 text-sm h-10">For schools and absolute power users needing zero limits.</p>
+                        </div>
+                        
+                        <div class="mb-8">
+                            <div class="flex items-center gap-3 mb-1">
+                                <span class="text-xl text-slate-500 font-bold line-through decoration-red-500/50 decoration-2">₹4999</span>
+                                <span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest" id="ultra-discount-badge">-50% Off</span>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-5xl font-extrabold text-purple-400 price-text" id="ultra-price">₹2499</span>
+                                <span class="text-slate-500 font-medium">/mo</span>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col gap-4 mb-8 relative z-10">
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-purple-400 mt-0.5"></i><span class="text-slate-300 text-sm font-medium">Everything in Pro</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-purple-400 mt-0.5"></i><span class="text-white font-bold text-sm">Unlimited AI Prompts</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-purple-400 mt-0.5"></i><span class="text-slate-300 text-sm font-medium">Multiplayer Lab Sessions</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-purple-400 mt-0.5"></i><span class="text-slate-300 text-sm font-medium">VR Headset Native Support</span></div>
+                            <div class="flex items-start gap-3"><i data-lucide="check" class="w-5 h-5 text-purple-400 mt-0.5"></i><span class="text-slate-300 text-sm font-medium">1-on-1 Human Expert Tutoring</span></div>
+                        </div>
+
+                        <!-- REDIRECTS TO ULTRA.HTML CHECKOUT -->
+                        <button id="ultra-btn" onclick="redirectToCheckout('Ultra')" class="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-transform hover:-translate-y-1 active:scale-95 relative z-10">
+                            <span id="ultra-btn-text">Get Ultra</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+            <div class="h-10"></div>
+        </main>
+    </div>
+
+    <!-- UI & Promo Code Scripts -->
+    <script>
+        lucide.createIcons();
+
+        // Animated Toast Function
+        window.showToast = function(title, message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '', textColorClass = '', barColorClass = '';
+            if (type === 'success') { iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>'; textColorClass = 'text-green-400'; barColorClass = 'bg-green-500'; } 
+            else if (type === 'info') { iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>'; textColorClass = 'text-blue-400'; barColorClass = 'bg-blue-500'; } 
+            else if (type === 'warning' || type === 'error') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-red-400'; barColorClass = 'bg-red-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now() + Math.floor(Math.random() * 1000);
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 5s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            void toast.offsetWidth;
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            setTimeout(() => { if (toast.parentElement) { toast.classList.remove('translate-x-0'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); } }, 5000);
+        };
+
+        // --- PROMO CODE LOGIC ---
+        const ORIGINAL_PRO_PRICE = 1999;
+        const ORIGINAL_ULTRA_PRICE = 4999;
+        const BASE_DISCOUNT = 0.50; // 50% off globally
+        
+        let currentExtraDiscount = 0; // Starts at 0% extra
+        window.currentTotalDiscount = BASE_DISCOUNT; // Expose globally for sessionStorage
+
+        function updatePricesUI() {
+            const proPriceEl = document.getElementById('pro-price');
+            const ultraPriceEl = document.getElementById('ultra-price');
+            const proBadge = document.getElementById('pro-discount-badge');
+            const ultraBadge = document.getElementById('ultra-discount-badge');
+            const proBtnText = document.getElementById('pro-btn-text');
+            const ultraBtnText = document.getElementById('ultra-btn-text');
+
+            // Calculate total discount
+            window.currentTotalDiscount = BASE_DISCOUNT + currentExtraDiscount;
+            if (window.currentTotalDiscount > 1) window.currentTotalDiscount = 1; // Cap at 100% free
+
+            const newProPrice = Math.max(0, ORIGINAL_PRO_PRICE * (1 - window.currentTotalDiscount));
+            const newUltraPrice = Math.max(0, ORIGINAL_ULTRA_PRICE * (1 - window.currentTotalDiscount));
+
+            // Animate price change
+            proPriceEl.classList.add('price-bump');
+            ultraPriceEl.classList.add('price-bump');
+
+            setTimeout(() => {
+                proPriceEl.innerText = `₹${newProPrice.toFixed(0)}`;
+                ultraPriceEl.innerText = `₹${newUltraPrice.toFixed(0)}`;
+                
+                let percentString = `-${(window.currentTotalDiscount * 100).toFixed(0)}% Off`;
+                
+                // If the total discount reaches 100%, update the UI explicitly
+                if (window.currentTotalDiscount >= 1) {
+                    percentString = "100% FREE";
+                    if (proBtnText && !proBtnText.innerText.includes("Status") && !proBtnText.innerText.includes("Included")) proBtnText.innerText = "Claim Free Lifetime";
+                    if (ultraBtnText && !ultraBtnText.innerText.includes("Status")) ultraBtnText.innerText = "Claim Free Lifetime";
+                }
+                
+                proBadge.innerText = percentString;
+                ultraBadge.innerText = percentString;
+                
+                // Change badge colors based on total discount
+                if (currentExtraDiscount > 0) {
+                    const badgeClass = window.currentTotalDiscount >= 1 
+                        ? "text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest transition-colors"
+                        : "text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest transition-colors";
+                    
+                    proBadge.className = badgeClass;
+                    ultraBadge.className = badgeClass;
+                }
+
+                proPriceEl.classList.remove('price-bump');
+                ultraPriceEl.classList.remove('price-bump');
+            }, 300);
+        }
+
+        window.applyPromoCode = function() {
+            const input = document.getElementById('promo-input');
+            const code = input.value.trim().toUpperCase();
+
+            if (!code) {
+                window.showToast("Empty Code", "Please enter a promo code before applying.", "warning");
+                return;
+            }
+
+            // Ensure secrets/promo-codes.js loaded properly
+            if (typeof PROMO_CODES === 'undefined') {
+                window.showToast("System Error", "Promo code database is offline. Please ensure secrets/promo-codes.js is created.", "error");
+                return;
+            }
+
+            if (PROMO_CODES.hasOwnProperty(code)) {
+                // Code is valid! Apply extra discount
+                currentExtraDiscount = PROMO_CODES[code];
+                updatePricesUI();
+                
+                input.value = '';
+                input.blur();
+                
+                if (window.currentTotalDiscount >= 1) {
+                    window.showToast("LIFETIME FREE Unlocked! 🎉", "Incredible! Your subscription is now 100% free forever.", "success");
+                } else {
+                    const totalPct = (window.currentTotalDiscount * 100).toFixed(0);
+                    window.showToast("Promo Applied! 🎉", `Awesome! Your total discount is now ${totalPct}%.`, "success");
+                }
+            } else {
+                // Code is invalid
+                window.showToast("Invalid Code", "That promo code does not exist or has expired.", "error");
+                input.classList.add('border-red-500', 'text-red-400');
+                setTimeout(() => input.classList.remove('border-red-500', 'text-red-400'), 2000);
+            }
+        };
+
+        // Allow pressing Enter in the input field
+        document.getElementById('promo-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyPromoCode();
+            }
+        });
+
+    </script>
+
+    <!-- FIREBASE AUTHENTICATION & SMART REDIRECT SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        let currentUser = null;
+        let db = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dream-xr-app';
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    window.location.href = "login.html";
+                } else {
+                    currentUser = user;
+                    
+                    try {
+                        const planRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'plan');
+                        const planSnap = await getDoc(planRef);
+                        
+                        let currentPlan = "Free";
+                        if (planSnap.exists() && planSnap.data().activePlan) {
+                            currentPlan = planSnap.data().activePlan;
+                        }
+
+                        // DOM References for Cards
+                        const freeBtn = document.getElementById('free-btn');
+                        const proBtn = document.getElementById('pro-btn');
+                        const ultraBtn = document.getElementById('ultra-btn');
+                        const proBtnText = document.getElementById('pro-btn-text');
+                        const ultraBtnText = document.getElementById('ultra-btn-text');
+
+                        // --- AUTO REDIRECT ONLY ONCE PER SESSION LOGIC ---
+                        const hasRedirected = sessionStorage.getItem('planAutoRedirect');
+                        if (!hasRedirected) {
+                            if (currentPlan === 'Ultra') {
+                                sessionStorage.setItem('planAutoRedirect', 'true');
+                                window.location.href = 'plans/ultra.html';
+                                return; // Stop execution
+                            } else if (currentPlan === 'Pro') {
+                                sessionStorage.setItem('planAutoRedirect', 'true');
+                                window.location.href = 'plans/pro.html';
+                                return; // Stop execution
+                            }
+                        }
+
+                        // --- SMART UI UPDATES BASED ON CURRENT PLAN ---
+                        if (currentPlan === "Ultra") {
+                            // Free Button
+                            freeBtn.innerText = "Included in Ultra";
+
+                            // Pro Button
+                            proBtn.disabled = true;
+                            proBtn.className = "w-full py-4 bg-slate-800 text-slate-400 rounded-xl font-bold cursor-not-allowed border border-slate-700 relative z-10";
+                            if (proBtnText) proBtnText.innerText = "Included in Ultra";
+
+                            // Leave Ultra button enabled so they can see the God Mode page!
+                            ultraBtn.disabled = false;
+                            if (ultraBtnText) ultraBtnText.innerText = "View Elite Status 👑";
+                            
+                        } else if (currentPlan === "Pro") {
+                            // Free Button
+                            freeBtn.innerText = "Included in Pro";
+
+                            // Leave Pro button enabled so they can see the Pro page!
+                            proBtn.disabled = false;
+                            if (proBtnText) proBtnText.innerText = "View Pro Status ⚡";
+                            
+                            // Ultra button remains default ("Upgrade to Ultra" or "Get Ultra")
+                            if (ultraBtnText) ultraBtnText.innerText = "Upgrade to Ultra";
+
+                        } else {
+                            // Free Plan (Default)
+                            freeBtn.innerText = "Current Plan";
+                            
+                            proBtn.disabled = false;
+                            if (proBtnText) proBtnText.innerText = "Upgrade to Pro";
+                            
+                            ultraBtn.disabled = false;
+                            if (ultraBtnText) ultraBtnText.innerText = "Get Ultra";
+                        }
+                        
+                        document.getElementById('app-body').classList.remove('hidden');
+                    } catch (error) {
+                        console.error("Error fetching plan state:", error);
+                        document.getElementById('app-body').classList.remove('hidden');
+                    }
+                }
+            });
+        } else {
+            console.error("Firebase config is missing.");
+        }
+
+        // --- SMART CHECKOUT ROUTING ---
+        window.redirectToCheckout = function(planName) {
+            if (!currentUser) return;
+            
+            // Save the user's active discount into session storage so the target checkout page can read it!
+            sessionStorage.setItem('pendingDiscount', window.currentTotalDiscount || 0.5);
+
+            // Forward the user to the God-Tier OOBE checkout pages
+            if (planName === 'Pro') {
+                window.location.href = "plans/pro.html";
+            } else if (planName === 'Ultra') {
+                window.location.href = "plans/ultra.html";
+            }
+        };
+    </script>
+</body>
+</html>

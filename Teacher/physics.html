@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Engine - Dream XR</title>
+    
+    <!-- Configs -->
+    <script src="./secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'typing': 'typing 1.5s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(40px) scale(0.95)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                        typing: { '0%': { width: '0' }, '100%': { width: '100%' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#818cf8' } },
+                        pulseGlow: {
+                            '0%, 100%': { transform: 'scale(1)', filter: 'drop-shadow(0 0 2px currentColor)' },
+                            '50%': { transform: 'scale(1.1)', filter: 'drop-shadow(0 0 10px currentColor)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(249, 115, 22, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.6); }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-orange-500/30 flex h-screen relative" id="app-body">
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-10 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/10 rounded-full blur-[120px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-orange-700/10 rounded-full blur-[120px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- EDUCATOR SIDEBAR -->
+    <aside class="w-72 h-full bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.4)] transition-all duration-300">
+        
+        <!-- Logo Area -->
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-indigo-400 animate-typing" style="animation: typing 1.5s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3 custom-scrollbar overflow-x-hidden">
+            
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 whitespace-nowrap">Educator Console</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Dashboard</span>
+            </a>
+            
+            <a href="./NCERT/ncert-library.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="library" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Intelligence Center</span>
+            </a>
+            
+            <a href="./Classrooms/class10.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="users" class="w-5 h-5 shrink-0 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">My Classrooms</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">AI & Resources</p>
+            
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                    <span class="font-semibold text-sm whitespace-nowrap">Nova Assistant</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
+            </a>
+            
+            <a href="assessments/assessments.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="file-check-2" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Assessments</span>
+            </a>
+
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="activity" class="w-5 h-5 shrink-0 group-hover:text-orange-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Live Lab Monitor</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">Account</p>
+            
+            <a href="Profile/profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="user" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Educator Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="settings" class="w-5 h-5 shrink-0 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT: PHYSICS LOCKED SCREEN -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden bg-[#070b19]">
+        <!-- Top Construction Border -->
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-400 via-red-500 to-orange-400 z-50"></div>
+        
+        <div class="flex-1 flex flex-col items-center justify-center p-10 text-center relative opacity-0 animate-uncover" style="animation-delay: 0.1s;">
+            
+            <!-- Glowing Atom Icon -->
+            <div class="w-28 h-28 bg-[#1f1412] border border-orange-500/30 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(249,115,22,0.15)] relative">
+                <div class="absolute inset-0 border border-orange-400/50 rounded-[2.5rem] animate-ping opacity-20"></div>
+                <i data-lucide="atom" class="w-14 h-14 text-orange-400 animate-spin-slow"></i>
+            </div>
+            
+            <!-- Heading -->
+            <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-6 tracking-tight">
+                Physics Engine <span class="text-orange-500 drop-shadow-md">Locked</span>
+            </h2>
+            
+            <!-- Paragraphs -->
+            <p class="text-slate-400 text-lg mb-6 leading-relaxed max-w-2xl font-medium">
+                Our AI models are currently being trained on real-time collision, optics, and circuit logic. Soon, you will be able to build custom physics simulations right here!
+            </p>
+            <p class="text-cyan-400 font-semibold mb-10 text-base">Till then, explore other things from the dashboard!</p>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                <a href="index.html" class="px-8 py-3.5 bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-600 rounded-full font-bold transition-all flex items-center gap-3 shadow-lg active:scale-95">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i> Back to Dashboard
+                </a>
+                <button onclick="notifyMe(this)" class="px-8 py-3.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white rounded-full font-bold transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(249,115,22,0.4)] hover:shadow-[0_0_30px_rgba(249,115,22,0.6)] active:scale-95">
+                    <i data-lucide="bell" class="w-5 h-5"></i> Notify Me
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- UI Scripts -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+
+        // --- GLOBAL TOAST NOTIFICATION FUNCTION ---
+        window.showToast = function(title, message, duration = 4000, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '', textColorClass = '', barColorClass = '';
+            if (type === 'success') { iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>'; textColorClass = 'text-green-400'; barColorClass = 'bg-green-500'; } 
+            else if (type === 'info') { iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>'; textColorClass = 'text-blue-400'; barColorClass = 'bg-blue-500'; } 
+            else if (type === 'warning' || type === 'error') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-orange-400'; barColorClass = 'bg-orange-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now();
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width ${duration}ms linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            void toast.offsetWidth; // trigger reflow
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            
+            setTimeout(() => { 
+                if (toast.parentElement) { 
+                    toast.classList.remove('translate-x-0'); 
+                    toast.classList.add('translate-x-full', 'opacity-0'); 
+                    setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); 
+                } 
+            }, duration);
+        };
+
+        // Notify Me Button Logic
+        window.notifyMe = function(btn) {
+            btn.innerHTML = '<i data-lucide="check-circle-2" class="w-5 h-5"></i> Subscribed';
+            btn.classList.replace('from-orange-500', 'from-green-500');
+            btn.classList.replace('to-red-500', 'to-emerald-600');
+            btn.classList.replace('hover:from-orange-400', 'hover:from-green-400');
+            btn.classList.replace('hover:to-red-400', 'hover:to-emerald-500');
+            btn.classList.replace('shadow-[0_0_20px_rgba(249,115,22,0.4)]', 'shadow-[0_0_20px_rgba(34,197,94,0.4)]');
+            lucide.createIcons();
+
+            window.showToast(
+                "Notification Set!", 
+                "You are on the priority list. We will alert you immediately when the Physics Engine goes live.", 
+                4000, 
+                "success"
+            );
+            
+            btn.disabled = true;
+        };
+    </script>
+</body>
+</html>

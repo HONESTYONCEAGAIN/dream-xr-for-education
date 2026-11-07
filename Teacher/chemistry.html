@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemistry XR Lab Manager | Dream XR Educator</title>
+    
+    <!-- Configs -->
+    <script src="../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 5s ease-in-out infinite',
+                        'float-delayed': 'float 5s ease-in-out 2.5s infinite',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'typing': 'typing 1.5s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite',
+                        'gradient-x': 'gradientX 15s ease infinite',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-15px)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(30px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        typing: { '0%': { width: '0' }, '100%': { width: '100%' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#22d3ee' } },
+                        gradientX: { '0%, 100%': { 'background-size': '200% 200%', 'background-position': 'left center' }, '50%': { 'background-size': '200% 200%', 'background-position': 'right center' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Premium Background Pattern */
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0); background-size: 30px 30px; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(34, 211, 238, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.6); }
+        
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        /* Premium Glass Card Hover */
+        .glass-card-premium {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .glass-card-premium:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 25px 50px -12px rgba(6, 182, 212, 0.25);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Intense Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-cyan-700/20 rounded-full blur-[150px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float-delayed"></div>
+    <div class="fixed inset-0 z-0 opacity-10 bg-gradient-to-r from-cyan-900 via-slate-900 to-indigo-900 animate-gradient-x pointer-events-none"></div>
+
+    <!-- Subtle Floating Molecules (5-10% opacity) -->
+    <div class="fixed top-[20%] right-[15%] opacity-5 pointer-events-none animate-float z-0 text-cyan-400">
+        <i data-lucide="hexagon" class="w-32 h-32 transform rotate-45"></i>
+    </div>
+    <div class="fixed bottom-[20%] left-[25%] opacity-5 pointer-events-none animate-float-delayed z-0 text-indigo-400">
+        <i data-lucide="flask-conical" class="w-40 h-40 transform -rotate-12"></i>
+    </div>
+    <div class="fixed top-[60%] right-[40%] opacity-[0.03] pointer-events-none animate-spin-slow z-0 text-white">
+        <i data-lucide="atom" class="w-48 h-48"></i>
+    </div>
+
+    <!-- HARDCODED SIDEBAR FOR PERFECT RENDERING -->
+    <aside class="w-72 h-full bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.5)] transition-all duration-300">
+        
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-indigo-400 animate-typing" style="animation: typing 1.5s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3 custom-scrollbar overflow-x-hidden">
+            
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 whitespace-nowrap">Educator Console</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Dashboard</span>
+            </a>
+            
+            <a href="./NCERT/ncert-library.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="library" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Syllabus & NCERT</span>
+            </a>
+            
+            <a href="./Classrooms/class10.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="users" class="w-5 h-5 shrink-0 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">My Classrooms</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">AI & Resources</p>
+            
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                    <span class="font-semibold text-sm whitespace-nowrap">Nova Assistant</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
+            </a>
+            
+            <a href="assessments/assessments.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="file-check-2" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Assessments</span>
+            </a>
+
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="activity" class="w-5 h-5 shrink-0 group-hover:text-orange-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Live Lab Monitor</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">Account</p>
+            
+            <a href="Profile/profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="user" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Educator Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="settings" class="w-5 h-5 shrink-0 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-5">
+                <div class="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <i data-lucide="flask-conical" class="w-7 h-7 text-cyan-400 drop-shadow-md"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white tracking-tight">Chemistry XR Control Center</h2>
+                    <p class="text-sm text-slate-400 font-medium mt-0.5">Manage virtual reactions and orchestrate live class simulations</p>
+                </div>
+            </div>
+
+            <!-- Right side: Host Live Class Button & Profile -->
+            <div class="flex items-center gap-4 ml-auto">
+                <!-- LIVE STUDENTS BADGE -->
+                <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span>
+                    <span class="text-xs font-bold text-green-400 tracking-widest uppercase">Live: 18 Students</span>
+                </div>
+
+                <button onclick="hostLiveLab()" class="hidden md:flex items-center gap-3 px-6 py-3 bg-red-500/10 border border-red-500/40 text-red-400 rounded-full transition-all hover:bg-red-500/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.3)] group active:scale-95 shadow-inner">
+                    <i data-lucide="radio" class="w-4 h-4"></i>
+                    <span class="text-sm font-bold uppercase tracking-widest">Host Lab Session</span>
+                </button>
+
+                <a href="./Profile/profile.html" class="w-12 h-12 rounded-full bg-slate-800 border-2 border-indigo-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:scale-105 transition-transform group active:scale-90 ml-2">
+                    <i data-lucide="user" class="w-6 h-6 text-indigo-300 group-hover:text-white transition-colors"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- MAIN LAB MANAGER INTERFACE -->
+        <main class="flex-1 overflow-y-auto p-10 relative custom-scrollbar">
+            <div class="max-w-7xl mx-auto w-full flex flex-col gap-10 pb-16">
+                
+                <!-- TOP BANNER: Free-roam -->
+                <div class="bg-gradient-to-br from-[#0a0f1d] to-cyan-900/30 border border-cyan-500/40 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center justify-between shadow-[0_30px_60px_-15px_rgba(6,182,212,0.15)] relative overflow-hidden group animate-[slideUp_0.6s_ease-out_forwards] opacity-0" style="animation-delay: 0.1s;">
+                    <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+                        <i data-lucide="flask-conical" class="w-48 h-48 text-cyan-400 transform -rotate-12"></i>
+                    </div>
+                    
+                    <div class="relative z-10 md:w-2/3 mb-6 md:mb-0">
+                        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-4 shadow-[0_0_15px_rgba(6,182,212,0.3)]">Free Roam Environment</div>
+                        <h4 class="text-4xl font-black text-white mb-2 tracking-tight drop-shadow-md">Open Sandbox Lab</h4>
+                        <p class="text-sm text-cyan-300 font-bold mb-3 flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i> AI can simulate any reaction, even beyond the NCERT syllabus.</p>
+                        <p class="text-base text-slate-300 font-medium leading-relaxed max-w-xl">Launch the fully unconstrained AI-powered 3D simulator. Perfect for creating spontaneous, out-of-syllabus demonstrations for your students.</p>
+                    </div>
+                    
+                    <a href="../chemistry/simulator.html" class="relative overflow-hidden px-8 py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-lg rounded-2xl transition-all active:scale-95 shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center justify-center gap-3 whitespace-nowrap z-10 group/btn shrink-0">
+                        <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover/btn:animate-shimmer pointer-events-none"></div>
+                        <i data-lucide="rocket" class="w-6 h-6 fill-current group-hover/btn:-translate-y-1 transition-transform"></i> 🚀 Launch Sandbox
+                    </a>
+                </div>
+
+                <!-- QUICK REACTION LAUNCHER -->
+                <div class="bg-[#050810]/80 backdrop-blur-2xl border border-white/10 rounded-[3rem] p-10 shadow-2xl animate-[slideUp_0.6s_ease-out_forwards] opacity-0 relative overflow-hidden" style="animation-delay: 0.3s;">
+                    
+                    <div class="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+
+                    <div class="flex flex-col mb-10 border-b border-white/10 pb-8 gap-6 relative z-10">
+                        <div>
+                            <h3 class="text-3xl font-extrabold text-white flex items-center gap-3 drop-shadow-sm mb-2">
+                                <div class="p-2 bg-yellow-500/20 rounded-xl border border-yellow-500/30"><i data-lucide="zap" class="text-yellow-400 w-6 h-6 animate-pulse"></i></div>
+                                Quick Launch Database
+                            </h3>
+                            <p class="text-base text-slate-400 font-medium">Bypass the PDF reader and instantly deploy highly-filtered target reactions into the XR environment.</p>
+                        </div>
+                        
+                        <!-- ADVANCED FILTERS ROW -->
+                        <div class="flex flex-wrap items-center gap-4 w-full bg-black/40 p-4 rounded-2xl border border-white/5">
+                        <!-- ADVANCED FILTERS ROW -->
+                        <div class="flex flex-wrap items-center gap-4 w-full bg-black/40 p-3 rounded-2xl border border-white/5">
+                            
+                            <!-- Class Dropdown -->
+                            <div class="relative group cursor-pointer w-32 shadow-inner">
+                                <select id="class-select" onchange="updateChapters(); loadQuickReactions();" class="w-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors">
+                                    <option value="9">Class 9</option>
+                                    <option value="10" selected>Class 10</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4 group-hover:text-cyan-400 transition-colors"></i></div>
+                            </div>
+
+                            <!-- Chapter Dropdown -->
+                            <div class="relative group cursor-pointer w-48 shadow-inner">
+                                <select id="chapter-select" onchange="loadQuickReactions()" class="w-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors">
+                                    <option value="all">All Chapters</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4 group-hover:text-cyan-400 transition-colors"></i></div>
+                            </div>
+
+                            <!-- Difficulty Dropdown -->
+                            <div class="relative group cursor-pointer w-44 shadow-inner">
+                                <select id="difficulty-select" onchange="loadQuickReactions()" class="w-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors">
+                                    <option value="all">All Difficulties</option>
+                                    <option value="Easy">🟢 Easy</option>
+                                    <option value="Medium">🟡 Medium</option>
+                                    <option value="Advanced">🔴 Advanced</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4 group-hover:text-cyan-400 transition-colors"></i></div>
+                            </div>
+
+                            <!-- Target/Exam Filter -->
+                            <div class="relative group cursor-pointer w-40 shadow-inner">
+                                <select id="target-select" onchange="loadQuickReactions()" class="w-full bg-slate-900 border border-white/10 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors">
+                                    <option value="all">All Targets</option>
+                                    <option value="NCERT">NCERT Boards</option>
+                                    <option value="JEE">JEE Main/Adv</option>
+                                    <option value="NEET">NEET UG</option>
+                                    <option value="Olympiad">Olympiad</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400"><i data-lucide="chevron-down" class="w-4 h-4 group-hover:text-cyan-400 transition-colors"></i></div>
+                            </div>
+
+                            <!-- Search -->
+                            <div class="flex-1 flex items-center bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 focus-within:border-cyan-400/50 focus-within:shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all min-w-[200px]">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400 mr-2"></i>
+                                <input type="text" id="quick-search" oninput="loadQuickReactions()" placeholder="Search compound..." class="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-slate-500 font-medium">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reaction Grid -->
+                    <div id="quick-reactions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10 min-h-[300px]">
+                        <!-- Populated by JS -->
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN LOGIC -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateChapters();
+            loadQuickReactions();
+        });
+
+        window.hostLiveLab = function() {
+            if (typeof window.showToast === 'function') {
+                window.showToast("Initializing Live Server", "Connecting to Class Wars module. Students will receive an alert to join your session.", 4000, "info");
+                setTimeout(() => { window.location.href = "Classrooms/class-wars.html"; }, 1500);
+            } else {
+                window.location.href = "Classrooms/class-wars.html";
+            }
+        };
+
+        // --- ENHANCED DATABASE WITH DIFFICULTY & TARGET ---
+        const syllabusData = {
+            "10": [
+                { chapter: "Ch 1: Chemical Reactions", emojiTitle: "🔥 Mg + O₂", name: "Burning of Magnesium", desc: "Magnesium burns in air with a dazzling, blinding white flame to form Magnesium Oxide.", eq: "2Mg + O₂ → 2MgO", pdfUrl: "NCERT/Books/Class_10/jesc101.pdf", diff: "Easy", target: "NCERT" },
+                { chapter: "Ch 1: Chemical Reactions", emojiTitle: "💥 Fe + CuSO₄", name: "Iron in Copper Sulphate", desc: "Displacement reaction forming green Iron Sulphate solution. Popular board question.", eq: "Fe + CuSO₄ → FeSO₄ + Cu", pdfUrl: "NCERT/Books/Class_10/jesc101.pdf", diff: "Medium", target: "NCERT" },
+                { chapter: "Ch 1: Chemical Reactions", emojiTitle: "🧪 Pb(NO₃)₂ + KI", name: "Lead Nitrate & Potassium Iodide", desc: "Forms a brilliant yellow precipitate of Lead Iodide. Crucial for Olympiads.", eq: "Pb(NO₃)₂ + 2KI → PbI₂ + 2KNO₃", pdfUrl: "NCERT/Books/Class_10/jesc101.pdf", diff: "Advanced", target: "Olympiad" },
+                { chapter: "Ch 2: Acids & Bases", emojiTitle: "⚗️ Zn + HCl", name: "Zinc with Dilute HCl", desc: "Produces hydrogen gas which burns with a distinct pop sound. Lab staple.", eq: "Zn + 2HCl → ZnCl₂ + H₂", pdfUrl: "NCERT/Books/Class_10/jesc102.pdf", diff: "Medium", target: "JEE" },
+                { chapter: "Ch 2: Acids & Bases", emojiTitle: "💧 NaOH + HCl", name: "Neutralization", desc: "Sodium hydroxide base reacts with strong hydrochloric acid to form salt and water.", eq: "HCl + NaOH → NaCl + H₂O", pdfUrl: "NCERT/Books/Class_10/jesc102.pdf", diff: "Easy", target: "NEET" },
+                { chapter: "Ch 3: Metals", emojiTitle: "🌋 Thermite Rxn", name: "Thermite Reaction", desc: "Highly exothermic reaction used to join railway tracks. Fe2O3 and Al.", eq: "Fe₂O₃ + 2Al → Al₂O₃ + 2Fe", pdfUrl: "NCERT/Books/Class_10/jesc103.pdf", diff: "Advanced", target: "JEE" },
+                { chapter: "Ch 4: Carbon", emojiTitle: "⛽ CH₄ + O₂", name: "Combustion of Methane", desc: "Burning of natural gas producing carbon dioxide and water.", eq: "CH₄ + 2O₂ → CO₂ + 2H₂O", pdfUrl: "NCERT/Books/Class_10/jesc104.pdf", diff: "Easy", target: "NCERT" }
+            ],
+            "9": [
+                { chapter: "Ch 1: Matter", emojiTitle: "❄️ Evaporation", name: "Evaporation Cooling", desc: "Simulate temperature drop during evaporation process.", eq: "Physical Change", pdfUrl: "https://ncert.nic.in/textbook/pdf/iesc101.pdf", diff: "Easy", target: "NCERT" },
+                { chapter: "Ch 2: Pure Matter", emojiTitle: "🔦 Tyndall", name: "Tyndall Effect", desc: "Scattering of light beams by microscopic colloidal particles.", eq: "Physical Property", pdfUrl: "https://ncert.nic.in/textbook/pdf/iesc102.pdf", diff: "Medium", target: "NEET" }
+            ]
+        };
+
+        window.updateChapters = function() {
+            const classLvl = document.getElementById('class-select').value;
+            const chapSelect = document.getElementById('chapter-select');
+            
+            const chapters = [...new Set((syllabusData[classLvl] || []).map(item => item.chapter))];
+            
+            chapSelect.innerHTML = '<option value="all">All Chapters</option>';
+            chapters.forEach(ch => {
+                chapSelect.innerHTML += `<option value="${ch}">${ch}</option>`;
+            });
+        };
+
+        window.loadQuickReactions = function() {
+            const classLevel = document.getElementById('class-select').value;
+            const chapterFilter = document.getElementById('chapter-select').value;
+            const diffFilter = document.getElementById('difficulty-select').value;
+            const targetFilter = document.getElementById('target-select').value;
+            const query = document.getElementById('quick-search').value.toLowerCase();
+            const grid = document.getElementById('quick-reactions-grid');
+            
+            grid.innerHTML = '';
+            
+            const reactions = syllabusData[classLevel] || [];
+            let count = 0;
+
+            reactions.forEach(rxn => {
+                // Apply Filters
+                const matchChapter = chapterFilter === 'all' || rxn.chapter === chapterFilter;
+                const matchDiff = diffFilter === 'all' || rxn.diff === diffFilter;
+                const matchTarget = targetFilter === 'all' || rxn.target === targetFilter;
+                const matchSearch = rxn.name.toLowerCase().includes(query) || rxn.eq.toLowerCase().includes(query);
+
+                if (matchChapter && matchDiff && matchTarget && matchSearch) {
+                    count++;
+                    
+                    let diffColor = rxn.diff === "Easy" ? "text-green-400 bg-green-500/10 border-green-500/20" : 
+                                    (rxn.diff === "Medium" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" : "text-red-400 bg-red-500/10 border-red-500/20");
+                    let diffDot = rxn.diff === "Easy" ? "🟢" : (rxn.diff === "Medium" ? "🟡" : "🔴");
+
+                    let cleanLeftSide = rxn.eq.split('→')[0].replace(/\([slg]\)|(\(aq\))/gi, '').replace(/\$/g, '').trim();
+                    let reactantsArray = cleanLeftSide.split('+').map(r => r.trim());
+                    let simParams = `autoStart=true&name=${encodeURIComponent(rxn.name)}`;
+                    reactantsArray.forEach((r, idx) => { if(idx < 3 && r !== "Physical Change" && r !== "Physical Property") simParams += `&r${idx+1}=${encodeURIComponent(r)}`; });
+
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-900/60 backdrop-blur-xl p-6 rounded-[1.5rem] group flex flex-col justify-between h-full border border-white/5 hover:border-cyan-500/40 hover:shadow-[0_10px_30px_-10px_rgba(6,182,212,0.3)] transition-all duration-300";
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">${rxn.chapter}</span>
+                                <div class="flex gap-2">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${diffColor}">${diffDot} ${rxn.diff}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-600 bg-slate-800 text-slate-300">${rxn.target}</span>
+                                </div>
+                            </div>
+                            <h4 class="text-white font-extrabold text-2xl mb-1 leading-tight group-hover:text-cyan-400 transition-colors">${rxn.emojiTitle}</h4>
+                            <p class="text-xs text-slate-400 mb-4 line-clamp-2 leading-relaxed font-medium">${rxn.desc}</p>
+                            <div class="inline-block bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 font-mono text-sm font-bold text-cyan-400 mb-6 w-full truncate shadow-inner text-center">
+                                ${rxn.eq}
+                            </div>
+                        </div>
+                        <a href="../chemistry/simulator.html?${simParams}" class="w-full text-center py-3.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl text-sm font-extrabold transition-all border border-cyan-500/30 hover:border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.1)] hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 active:scale-95">
+                            <i data-lucide="play" class="w-4 h-4 fill-current"></i> 1-Click Launch XR
+                        </a>
+                    `;
+                    grid.appendChild(card);
+                }
+            });
+
+            if (count === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center flex flex-col items-center justify-center bg-black/20 rounded-3xl border border-white/5">
+                        <i data-lucide="filter-x" class="w-12 h-12 text-slate-600 mb-4"></i>
+                        <p class="text-slate-400 text-base font-bold">No advanced modules found matching these parameters.</p>
+                        <button onclick="document.getElementById('target-select').value='all'; document.getElementById('difficulty-select').value='all'; loadQuickReactions();" class="mt-4 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-slate-300">Clear Filters</button>
+                    </div>`;
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+    </script>
+
+    <!-- FIREBASE INIT & AUTH PROTECTION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    window.location.href = "../login.html"; 
+                } else {
+                    document.getElementById('app-body').classList.remove('hidden');
+                }
+            });
+        } else {
+            // Fallback for local testing without Firebase
+            document.getElementById('app-body').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

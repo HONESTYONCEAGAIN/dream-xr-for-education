@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class 10 Live Arena | Dream XR</title>
+    
+    <!-- Configs -->
+    <script src="../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js for Live Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Odometer JS & CSS for MDM-Style Rolling Numbers -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/themes/odometer-theme-minimal.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.8/odometer.min.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shimmer': 'shimmer 2s infinite linear',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-up-fade': 'slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'flash-green': 'flashGreen 1.5s ease-out'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(30px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        shimmer: { '100%': { transform: 'translateX(100%)' } },
+                        pulseGlow: { '0%, 100%': { transform: 'scale(1)', opacity: '1' }, '50%': { transform: 'scale(1.05)', opacity: '0.8' } },
+                        slideUpFade: { '0%': { opacity: '0', transform: 'translateY(40px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        flashGreen: { '0%': { backgroundColor: 'rgba(34, 197, 94, 0.5)' }, '100%': { backgroundColor: 'transparent' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.6); }
+
+        .glass-row { transition: transform 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease; }
+        .glass-row:hover { background-color: rgba(59, 130, 246, 0.1); transform: scale(1.01); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); z-index: 10; position: relative; }
+        
+        /* Odometer MDM Specific Overrides */
+        .odometer.odometer-theme-minimal { font-family: 'Courier New', Courier, monospace; letter-spacing: 1px; }
+        .odometer-value { color: #22d3ee; } 
+        .total-xp-odometer .odometer-value { color: #ffffff; } 
+        
+        /* Forces smooth flex column sorting */
+        tbody { display: flex; flex-direction: column; width: 100%; }
+
+        /* Animation for the battle bar */
+        .battle-bar-transition { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-blue-500/30 flex h-screen relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-blue-700/20 rounded-full blur-[150px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- DYNAMIC SIDEBAR CONTAINER -->
+    <div id="sidebar-container" class="z-20 shrink-0 h-full"></div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP NAVIGATION BAR -->
+        <header class="h-24 bg-slate-950/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="hidden lg:flex items-center bg-black/40 border border-white/10 rounded-full px-5 py-3 w-[450px] focus-within:border-blue-400/50 focus-within:bg-black/60 transition-all shadow-inner group">
+                <i data-lucide="search" class="w-5 h-5 text-slate-500 group-focus-within:text-blue-400 transition-colors mr-3"></i>
+                <input type="text" placeholder="Search students, assignments, or analytics..." class="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-slate-600 font-medium">
+                <div class="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] text-slate-400 ml-2 font-mono">Ctrl+K</div>
+            </div>
+
+            <div class="flex items-center gap-6 ml-auto">
+                <button class="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-full transition-colors font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(239,68,68,0.15)] hover:bg-red-500/20">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Host Live XR Lobby
+                </button>
+
+                <a href="../notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:rotate-12 transition-transform"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </a>
+
+                <a href="../Profile/profile.html" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-indigo-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:scale-105 transition-transform ml-2">
+                    <i data-lucide="user" class="w-5 h-5 text-indigo-300"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SCROLLABLE CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar relative">
+            <div class="max-w-7xl mx-auto flex flex-col min-h-full">
+                
+                <!-- HEADER SECTION -->
+                <header class="mb-10 opacity-0 animate-uncover flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 rounded-full mb-5 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+                            <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-100">Live Activity Monitor</span>
+                        </div>
+
+                        <h2 class="text-4xl md:text-5xl font-extrabold mb-4 text-white tracking-tight">Class <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 drop-shadow-md">10 - Science</span> 📊</h2>
+                        <p class="text-slate-400 text-lg max-w-2xl leading-relaxed">
+                            Real-time student XR activity and competition tracker. Watch the ranks shift live as students complete simulations.
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-slate-900/80 p-2 rounded-2xl border border-white/10 backdrop-blur-xl shadow-lg w-full md:w-auto overflow-x-auto custom-scrollbar">
+                        <button class="px-5 py-2.5 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold text-sm transition-all shadow-[0_0_15px_rgba(59,130,246,0.2)] whitespace-nowrap">Section A</button>
+                        <button class="px-5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-semibold text-sm transition-all border border-transparent whitespace-nowrap">Section B</button>
+                    </div>
+                </header>
+
+                <!-- STATS WIDGETS -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 opacity-0 animate-uncover" style="animation-delay: 0.1s;">
+                    
+                    <div class="bg-black/40 border border-white/5 p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5 transition-colors relative overflow-hidden">
+                        <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center border border-blue-500/20"><i data-lucide="users" class="w-6 h-6"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Active Online</p>
+                            <h4 class="text-2xl font-bold text-white flex items-center gap-2">
+                                <div id="active-online-val" class="odometer">38</div>
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            </h4>
+                        </div>
+                    </div>
+                    
+                    <!-- LIVE TOTAL XP WIDGET WITH ODOMETER -->
+                    <div class="bg-blue-900/20 border border-blue-500/30 p-5 rounded-2xl flex items-center gap-4 hover:bg-blue-900/30 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.15)] relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer pointer-events-none"></div>
+                        <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-500/40 shadow-[0_0_10px_rgba(52,211,153,0.3)]"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
+                        <div>
+                            <p class="text-xs text-emerald-300 font-bold uppercase mb-0.5">Total Class XP</p>
+                            <h4 class="text-2xl font-bold text-white flex items-center gap-1">
+                                <!-- ODOMETER TARGET FOR TOTAL CLASS XP -->
+                                <div id="total-class-xp-val" class="odometer total-xp-odometer text-white text-3xl drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">485240</div>
+                                <i data-lucide="arrow-up-right" class="w-4 h-4 text-emerald-400 ml-1"></i>
+                            </h4>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 border border-white/5 p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5 transition-colors">
+                        <div class="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center border border-purple-500/20"><i data-lucide="clock" class="w-6 h-6"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Avg. XR Time</p>
+                            <h4 class="text-2xl font-bold text-white flex items-center gap-1">
+                                <div id="avg-time-hours" class="odometer">4</div><span class="text-lg text-slate-400 mt-1">h</span>
+                                <div id="avg-time-mins" class="odometer ml-1">12</div><span class="text-lg text-slate-400 mt-1">m</span>
+                            </h4>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 border border-white/5 p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5 transition-colors">
+                        <div class="w-12 h-12 bg-orange-500/10 text-orange-400 rounded-xl flex items-center justify-center border border-orange-500/20"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Students At Risk</p>
+                            <h4 class="text-2xl font-bold text-orange-400 flex items-center">
+                                <div id="students-risk-val" class="odometer text-orange-400">3</div>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12 opacity-0 animate-uncover" style="animation-delay: 0.2s;">
+                    
+                    <!-- LEFT COLUMN: Live Chart & Nova AI -->
+                    <div class="xl:col-span-1 flex flex-col gap-6">
+                        
+                        <!-- LIVE CHART.JS WIDGET -->
+                        <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <i data-lucide="activity" class="w-5 h-5 text-blue-400"></i> Live Velocity
+                                </h3>
+                                <span class="flex items-center gap-1 text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 uppercase font-bold tracking-widest animate-pulse">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Rec
+                                </span>
+                            </div>
+                            <div class="w-full h-[180px] relative">
+                                <canvas id="liveVelocityChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- NOVA INSIGHTS -->
+                        <div class="bg-gradient-to-br from-indigo-900/40 to-slate-900/80 backdrop-blur-xl border border-indigo-500/30 rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none"><i data-lucide="brain-circuit" class="w-32 h-32 text-indigo-400 transform rotate-12"></i></div>
+                            
+                            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2 relative z-10">
+                                <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i> Nova Class Radar
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-6 relative z-10">AI-generated live analysis.</p>
+                            
+                            <div class="flex flex-col gap-4 relative z-10">
+                                <div class="bg-black/40 border border-white/5 p-4 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2 text-emerald-400 font-bold text-sm">
+                                        <i data-lucide="trending-up" class="w-4 h-4"></i> High Engagement
+                                    </div>
+                                    <p class="text-slate-300 text-sm">Class is highly active in the <strong>Chemistry Sandbox</strong> right now. XP generation is up by 40%.</p>
+                                </div>
+                                <div class="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl">
+                                    <div class="flex items-center gap-2 mb-2 text-orange-400 font-bold text-sm">
+                                        <i data-lucide="alert-circle" class="w-4 h-4"></i> Struggle Area Detected
+                                    </div>
+                                    <p class="text-slate-300 text-sm">Multiple students failing the <strong>Refraction</strong> quiz.</p>
+                                    <button class="mt-3 w-full py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded-lg text-xs font-bold border border-orange-500/30 transition-colors">
+                                        Assign Remedial XR Lab
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT COLUMN: MDM Style Live Student Roster -->
+                    <div class="xl:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-xl flex flex-col relative overflow-hidden border-t-4 border-t-blue-500">
+                        <!-- Neon glow for table -->
+                        <div class="absolute top-0 right-1/4 w-[300px] h-[300px] bg-blue-500/5 blur-[100px] rounded-full pointer-events-none"></div>
+
+                        <div class="flex items-center justify-between mb-6 relative z-10">
+                            <h3 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <i data-lucide="swords" class="text-yellow-400 w-6 h-6"></i> Live Global Leaderboard
+                            </h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest"><span class="text-cyan-400 animate-pulse">●</span> Auto-sync On</span>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto custom-scrollbar pb-2 relative z-10 h-full">
+                            <table class="w-full text-left border-collapse min-w-[600px] h-full flex flex-col">
+                                <thead class="w-full shrink-0 block border-b border-white/10 mb-2">
+                                    <tr class="text-xs uppercase tracking-wider text-slate-500 font-bold flex w-full">
+                                        <th class="pb-3 pl-2 w-16 shrink-0">Rank</th>
+                                        <th class="pb-3 flex-1 min-w-[150px]">Student Name</th>
+                                        <th class="pb-3 text-right w-36 shrink-0">Live XP Score</th>
+                                        <th class="pb-3 pl-8 flex-1 min-w-[150px]">Active Module</th>
+                                        <th class="pb-3 text-right pr-2 w-28 shrink-0">AI Status</th>
+                                    </tr>
+                                </thead>
+                                <!-- TBODY uses flex layout to allow physical row moving without breaking Odometer -->
+                                <tbody id="live-leaderboard-body" class="text-sm text-slate-300 relative w-full flex-1 gap-2 flex-col">
+                                    <!-- Populated by JavaScript to handle sorting animations -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <footer class="mt-auto pt-12 mb-6 text-center text-slate-600 text-xs font-bold uppercase tracking-[0.2em]">
+                    &copy; Copyright made by Monarch AI Sol. 2026
+                </footer>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            await loadSidebar('classrooms');
+            
+            // Set global odometer format (adds commas)
+            window.odometerOptions = { format: '(,ddd)', duration: 1500 };
+            
+            initLiveLeaderboard();
+            initLiveChart();
+        });
+
+        // --- DYNAMIC SIDEBAR LOADER ---
+        async function loadSidebar(activePage) {
+            const sidebarContainer = document.getElementById('sidebar-container');
+            try {
+                const cacheBuster = new Date().getTime();
+                const response = await fetch('../sidebar/sidebar.html?v=' + cacheBuster);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                let html = await response.text();
+                
+                html = html.replace(/\[BASE\]/g, '../');
+                sidebarContainer.innerHTML = html;
+                
+                const activeLink = document.querySelector(`.sidebar-link[data-page="${activePage}"]`);
+                if (activeLink) {
+                    activeLink.className = "sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/30 shadow-[inset_0_0_20px_rgba(59,130,246,0.15)] transition-all overflow-hidden";
+                    const icon = activeLink.querySelector('i');
+                    if (icon) icon.classList.remove('group-hover:text-blue-400', 'text-slate-400');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (error) {
+                console.error("Failed to load sidebar:", error);
+            }
+        }
+
+        // ==========================================
+        // KHATARNAK LIVE LEADERBOARD (MDM STYLE)
+        // ==========================================
+        
+        let studentsData = [
+            { id: 's1', name: 'Rahul Verma', xp: 15429, color: 'blue', icon: 'heart-pulse', module: 'Human Heart 3D', status: 'Excelling', statusColor: 'green' },
+            { id: 's2', name: 'Sarah Mirza', xp: 15314, color: 'purple', icon: 'flask-conical', module: 'Acid/Base Lab', status: 'Excelling', statusColor: 'green' },
+            { id: 's3', name: 'Aman Kumar', xp: 15141, color: 'emerald', icon: 'sun', module: 'Lens Refraction', status: 'On Track', statusColor: 'blue' },
+            { id: 's4', name: 'Priya Singh', xp: 15106, color: 'pink', icon: 'bot', module: 'Nova AI Tutor', status: 'On Track', statusColor: 'blue' },
+            { id: 's5', name: 'Neha Sharma', xp: 14323, color: 'orange', icon: 'sun', module: 'Prism Dispersion', status: 'Needs Help', statusColor: 'orange' }
+        ];
+
+        let totalClassXP = 485240;
+        let activeOnline = 38;
+        let avgMins = 12;
+        let studentsAtRisk = 3;
+
+        // One-time initial render to build DOM structures
+        function initialRender() {
+            const tbody = document.getElementById('live-leaderboard-body');
+            tbody.innerHTML = '';
+            
+            studentsData.sort((a, b) => b.xp - a.xp);
+
+            studentsData.forEach((student, index) => {
+                const rank = index + 1;
+                let rankColor = 'text-slate-500';
+                if(rank === 1) rankColor = 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]';
+                if(rank === 2) rankColor = 'text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.5)]';
+                if(rank === 3) rankColor = 'text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]';
+
+                const initial = student.name.charAt(0);
+
+                const rowHtml = `
+                    <tr class="border-b border-white/5 bg-slate-900/40 rounded-xl p-2 glass-row cursor-pointer group flex w-full items-center shrink-0 shadow-sm" id="row-${student.id}" style="height: 60px;">
+                        <td class="rank-display py-2 pl-4 font-extrabold text-xl w-16 shrink-0 ${rankColor}">#${rank}</td>
+                        <td class="py-2 font-bold text-white flex items-center gap-3 flex-1 min-w-[150px]">
+                            <div class="w-8 h-8 rounded-full bg-${student.color}-500/20 text-${student.color}-400 flex items-center justify-center text-xs border border-${student.color}-500/30 shrink-0 shadow-inner">
+                                ${initial}
+                            </div>
+                            <span class="truncate max-w-[120px]">${student.name}</span>
+                        </td>
+                        <td class="py-2 text-right w-36 shrink-0 font-bold text-lg text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+                            <!-- Odometer Target for Student -->
+                            <div id="xp-${student.id}" class="odometer">${student.xp}</div>
+                        </td>
+                        <td class="py-2 text-slate-400 text-xs pl-8 flex-1 min-w-[150px] truncate">
+                            <i data-lucide="${student.icon}" class="inline w-3 h-3 text-${student.color}-400 mr-1"></i> ${student.module}
+                        </td>
+                        <td class="py-2 text-right pr-4 w-28 shrink-0">
+                            <span class="bg-${student.statusColor}-500/10 text-${student.statusColor}-400 border border-${student.statusColor}-500/20 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest inline-block whitespace-nowrap">
+                                ${student.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', rowHtml);
+            });
+
+            // Initialize Total XP Odometer once
+            const totalXpEl = document.getElementById('total-class-xp-val');
+            if(totalXpEl) totalXpEl.innerHTML = totalClassXP;
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function initLiveLeaderboard() {
+            initialRender();
+
+            // The Pulse: Master Interval that controls the MDM Live Feel
+            setInterval(() => {
+                let numBumps = Math.floor(Math.random() * 2) + 1; // 1 to 2 students bump at a time
+                let flashId = null;
+
+                // 1. Mutate data array & trigger Odometers for Students
+                for(let i=0; i<numBumps; i++) {
+                    const randomIdx = Math.floor(Math.random() * studentsData.length);
+                    const bumpAmt = Math.floor(Math.random() * 25) + 10; // Boost XP by 10-35
+                    
+                    studentsData[randomIdx].xp += bumpAmt;
+                    totalClassXP += bumpAmt;
+                    flashId = studentsData[randomIdx].id; 
+
+                    const xpEl = document.getElementById(`xp-${studentsData[randomIdx].id}`);
+                    if(xpEl) {
+                        xpEl.innerHTML = studentsData[randomIdx].xp; // Triggers Odometer scroll
+                    }
+                }
+
+                // 2. Trigger Odometer for Total Class XP
+                const totalXpEl = document.getElementById('total-class-xp-val');
+                if(totalXpEl) totalXpEl.innerHTML = totalClassXP;
+
+                // 3. Randomly update other stats slightly to make them feel alive
+                if(Math.random() > 0.7) {
+                    activeOnline = Math.max(30, Math.min(45, activeOnline + (Math.floor(Math.random() * 3) - 1)));
+                    document.getElementById('active-online-val').innerHTML = activeOnline;
+                }
+                
+                if(Math.random() > 0.8) {
+                    avgMins = (avgMins + 1) % 60;
+                    document.getElementById('avg-time-mins').innerHTML = avgMins;
+                    if(avgMins === 0) {
+                        const hoursEl = document.getElementById('avg-time-hours');
+                        hoursEl.innerHTML = parseInt(hoursEl.innerHTML) + 1;
+                    }
+                }
+
+                if(Math.random() > 0.9) {
+                    studentsAtRisk = Math.max(1, Math.min(5, studentsAtRisk + (Math.floor(Math.random() * 3) - 1)));
+                    document.getElementById('students-risk-val').innerHTML = studentsAtRisk;
+                }
+
+                // 4. Check if array needs re-sorting
+                let isSorted = true;
+                for(let i=0; i<studentsData.length-1; i++) {
+                    if(studentsData[i].xp < studentsData[i+1].xp) {
+                        isSorted = false; break;
+                    }
+                }
+
+                if(!isSorted) {
+                    studentsData.sort((a, b) => b.xp - a.xp);
+                    const tbody = document.getElementById('live-leaderboard-body');
+                    
+                    // Move actual DOM nodes to match new array order (Crucial to not break Odometers)
+                    studentsData.forEach((student, index) => {
+                        const row = document.getElementById(`row-${student.id}`);
+                        if (row) {
+                            tbody.appendChild(row); 
+                            
+                            // Update Rank visuals in place
+                            const rank = index + 1;
+                            const rankCell = row.querySelector('.rank-display');
+                            rankCell.innerText = `#${rank}`;
+                            
+                            if(rank === 1) rankCell.className = 'rank-display py-2 pl-4 font-extrabold text-xl w-16 shrink-0 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]';
+                            else if(rank === 2) rankCell.className = 'rank-display py-2 pl-4 font-extrabold text-xl w-16 shrink-0 text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.5)]';
+                            else if(rank === 3) rankCell.className = 'rank-display py-2 pl-4 font-extrabold text-xl w-16 shrink-0 text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.5)]';
+                            else rankCell.className = 'rank-display py-2 pl-4 font-extrabold text-xl w-16 shrink-0 text-slate-500';
+                        }
+                    });
+
+                    // Flash the row that caused the overtake
+                    if(flashId) {
+                        const rowToFlash = document.getElementById(`row-${flashId}`);
+                        if(rowToFlash) {
+                            rowToFlash.classList.remove('animate-flash-green');
+                            void rowToFlash.offsetWidth; // Force CSS reflow
+                            rowToFlash.classList.add('animate-flash-green');
+                        }
+                    }
+                }
+
+            }, 2500); // 2.5s gives enough time for the Odometer rolling animation to finish beautifully
+        }
+
+        // ==========================================
+        // CHART.JS LIVE GRAPH INITIALIZATION
+        // ==========================================
+        
+        let liveChart;
+        function initLiveChart() {
+            const ctx = document.getElementById('liveVelocityChart').getContext('2d');
+            
+            const initialData = [12, 19, 15, 25, 22, 30, 28, 35, 32, 40];
+            const labels = ['-9m', '-8m', '-7m', '-6m', '-5m', '-4m', '-3m', '-2m', '-1m', 'Now'];
+
+            let gradient = ctx.createLinearGradient(0, 0, 0, 180);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); 
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            liveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'XP per minute',
+                        data: initialData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#3b82f6',
+                        pointBorderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#94a3b8',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                            ticks: { color: '#64748b', font: { size: 10 }, stepSize: 10 },
+                            beginAtZero: true
+                        }
+                    },
+                    animation: {
+                        duration: 500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            setInterval(() => {
+                const newDataPoint = Math.floor(Math.random() * 20) + 25;
+                liveChart.data.datasets[0].data.shift();
+                liveChart.data.datasets[0].data.push(newDataPoint);
+                liveChart.update();
+            }, 4000);
+        }
+    </script>
+
+    <!-- FIREBASE INITIALIZATION FOR AUTH CHECK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    window.location.href = "../../login.html"; 
+                }
+            });
+        }
+    </script>
+</body>
+</html>

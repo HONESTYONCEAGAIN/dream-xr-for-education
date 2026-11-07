@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Simulator | Chemistry Lab - Dream XR</title>
+    
+    <!-- Load Configuration for API Key -->
+    <script src="../secrets/config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Three.js & OrbitControls for Highly Realistic 3D WebGL Scene -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 2s infinite linear',
+                        'float': 'float 4s ease-in-out infinite',
+                        'scanline': 'scanline 4s linear infinite',
+                        'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        shimmer: { '100%': { transform: 'translateX(-100%)' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        scanline: { '0%': { transform: 'translateY(-100%)' }, '100%': { transform: 'translateY(1000%)' } },
+                        popIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.4); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.8); }
+        
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        .cursor-blink::after { content: '|'; animation: blink 1s step-start infinite; color: #22d3ee; margin-left: 2px; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* HUD Corners for the 3D Viewer */
+        .hud-corner { position: absolute; width: 30px; height: 30px; border-color: rgba(34, 211, 238, 0.5); border-style: solid; z-index: 10; pointer-events: none; }
+        .hud-tl { top: 15px; left: 15px; border-width: 2px 0 0 2px; }
+        .hud-tr { top: 15px; right: 15px; border-width: 2px 2px 0 0; }
+        .hud-bl { bottom: 15px; left: 15px; border-width: 0 0 2px 2px; }
+        .hud-br { bottom: 15px; right: 15px; border-width: 0 2px 2px 0; }
+        
+        /* Neon Input Focus */
+        .neon-input:focus-within { box-shadow: 0 0 20px rgba(6, 182, 212, 0.2) inset, 0 0 10px rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.6); }
+
+        /* Split Screen Resizer Styles */
+        #drag-resizer:hover { background-color: rgba(6, 182, 212, 0.5); }
+        .resizing { user-select: none; }
+        .resizing iframe { pointer-events: none; } /* Crucial: stops iframe from swallowing mouse events during drag */
+
+        /* PDF Whiteboard Tools Active State */
+        .pdf-tool-active { background-color: white !important; color: #3b82f6 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0.375rem; }
+        
+        /* Sidebar Collapse Transitions */
+        .sidebar-hidden { width: 0 !important; opacity: 0; overflow: hidden; border: none; padding: 0; margin: 0; }
+    </style>
+</head>
+<body class="bg-[#02050f] text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-40 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-cyan-600/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float" style="animation-delay: -2s;"></div>
+
+    <!-- EDUCATOR SIDEBAR (Collapsible) -->
+    <aside id="app-sidebar" class="w-72 h-full bg-[#070b19]/90 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-50 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.5)] transition-all duration-300">
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block whitespace-nowrap">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-1 drop-shadow-sm">Dream XR</h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3 custom-scrollbar">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Educator Console</p>
+            <a href="../index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i><span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a href="../NCERT/ncert-library.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="library" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-colors"></i><span class="font-semibold text-sm">Intelligence Center</span>
+            </a>
+            <a href="../Classrooms/class10.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="users" class="w-5 h-5 shrink-0 group-hover:text-blue-400 transition-colors"></i><span class="font-semibold text-sm">My Classrooms</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">XR Environments</p>
+            <a href="../chemistry.html" class="relative flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] transition-all group overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent animate-shimmer pointer-events-none"></div>
+                <i data-lucide="flask-conical" class="w-5 h-5 shrink-0 relative z-10 animate-float"></i><span class="font-bold text-sm relative z-10">Chemistry Lab</span>
+            </a>
+            <a href="../bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="dna" class="w-5 h-5 shrink-0 group-hover:text-purple-400 transition-colors"></i><span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+            
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">AI & Resources</p>
+            <a href="../aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3"><i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-colors"></i><span class="font-semibold text-sm">Nova Assistant</span></div>
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR (Educator Control Style) -->
+        <header class="h-24 bg-slate-950/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <!-- Sidebar Toggle Button -->
+                <button onclick="toggleSidebar()" class="w-10 h-10 bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/30 rounded-lg flex items-center justify-center border border-white/10 transition-colors cursor-pointer mr-2 shadow-sm">
+                    <i data-lucide="menu" class="w-5 h-5 text-slate-300"></i>
+                </button>
+
+                <a href="../chemistry.html" class="w-10 h-10 bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/30 rounded-full flex items-center justify-center border border-white/10 transition-colors cursor-pointer" title="Exit Simulator">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-slate-300"></i>
+                </a>
+                <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center border border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <i data-lucide="flask-conical" class="w-6 h-6 text-cyan-300"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xl font-extrabold text-white tracking-wide" id="sim-title">Virtual Chemistry Lab</h2>
+                        <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[9px] font-black uppercase tracking-widest rounded border border-indigo-500/30 hidden md:inline-block">Educator Mode</span>
+                    </div>
+                    <p class="text-xs text-slate-400 font-medium hidden sm:block">Set up reactants and demonstrate to the class</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 sm:gap-4 ml-auto">
+                
+                <!-- Split Screen PDF Toggle Button -->
+                <button id="toggle-pdf-btn" onclick="togglePDF()" class="hidden items-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full transition-all hover:bg-emerald-500/20 font-bold text-xs uppercase tracking-wider group active:scale-95 shadow-inner">
+                    <i data-lucide="book-open" class="w-4 h-4 group-hover:scale-110 transition-transform"></i> <span id="pdf-btn-text" class="hidden sm:inline">Reference Book</span>
+                </button>
+
+                <!-- Live Class Broadcast Badge -->
+                <button class="hidden lg:flex items-center gap-2 px-5 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-full transition-all hover:bg-red-500/20 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] font-bold text-xs uppercase tracking-wider group active:scale-95 shadow-inner">
+                    <i data-lucide="radio" class="w-4 h-4 group-hover:scale-110 transition-transform"></i> Broadcast to Class
+                </button>
+                <div class="bg-black/60 border border-white/10 px-4 sm:px-6 py-2.5 rounded-full flex items-center gap-3 font-mono shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" id="timer-indicator" style="display: none;"></span>
+                    <span id="sim-timer" class="text-cyan-400 font-bold text-sm sm:text-lg tracking-widest">00:00:00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- LAB INTERFACE -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div class="max-w-[1800px] mx-auto w-full flex flex-col gap-6 pb-12">
+                
+                <!-- DYNAMIC DRAGGABLE FLEX CONTAINER FOR SPLIT SCREEN -->
+                <div class="flex flex-col xl:flex-row gap-6 min-h-[550px]" id="main-container">
+                    
+                    <!-- LEFT: NCERT PDF Viewer + Whiteboard (Hidden by Default) -->
+                    <div id="pdf-panel" class="hidden flex-col bg-[#e5e7eb] border-4 border-slate-800 rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden shrink-0 transition-all duration-300 relative z-10" style="width: 45%;">
+                        
+                        <!-- Premium PDF Header with Drawing Tools -->
+                        <div class="p-3 border-b border-slate-300 flex flex-wrap justify-between items-center bg-white shrink-0 shadow-sm z-20 relative gap-2">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm shrink-0"><i data-lucide="book-open" class="w-4 h-4 text-emerald-500"></i> <span class="hidden sm:inline">Official NCERT Book</span></h3>
+                            
+                            <!-- Smart Whiteboard Drawing Tools -->
+                            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+                                <button onclick="setPdfMode('pan')" id="pdf-tool-pan" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-500 transition-all pdf-tool-active" title="Pan & Scroll Book"><i data-lucide="mouse-pointer-2" class="w-4 h-4"></i></button>
+                                <button onclick="setPdfMode('draw')" id="pdf-tool-draw" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:shadow-sm hover:text-blue-500 transition-all" title="Pen Tool"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+                                <button onclick="setPdfMode('highlight')" id="pdf-tool-highlight" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:shadow-sm hover:text-yellow-500 transition-all" title="Highlighter"><i data-lucide="highlighter" class="w-4 h-4"></i></button>
+                                <button onclick="setPdfMode('erase')" id="pdf-tool-erase" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:shadow-sm hover:text-red-500 transition-all" title="Eraser"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+                                <div class="w-px h-4 bg-slate-300 mx-1"></div>
+                                <input type="color" id="pdf-color-picker" value="#ef4444" class="w-6 h-6 rounded cursor-pointer border-0 p-0" onchange="setPdfColor(this.value)" title="Choose Color">
+                                <div class="w-px h-4 bg-slate-300 mx-1"></div>
+                                <button onclick="clearPdfCanvas()" class="p-1.5 rounded-md text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors" title="Clear Board"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button onclick="togglePDFFullscreen()" class="text-slate-500 hover:text-purple-600 transition-colors p-1.5 rounded-lg bg-slate-100 hover:bg-purple-100" title="Full Screen Book"><i data-lucide="maximize" class="w-4 h-4" id="pdf-fs-icon"></i></button>
+                                <button onclick="window.open(document.getElementById('ncert-pdf-frame').src, '_blank')" class="text-slate-500 hover:text-blue-600 transition-colors p-1.5 rounded-lg bg-slate-100 hover:bg-blue-100" title="Open in new tab"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                                <button onclick="togglePDF()" class="text-slate-500 hover:text-red-600 transition-colors p-1.5 rounded-lg bg-slate-100 hover:bg-red-100" title="Close Book"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- PDF & Canvas Container -->
+                        <div class="relative flex-1 w-full bg-white" id="pdf-content-wrapper">
+                            <iframe id="ncert-pdf-frame" class="absolute inset-0 w-full h-full border-0 z-0" src=""></iframe>
+                            <canvas id="pdf-whiteboard" class="absolute inset-0 w-full h-full z-10 pointer-events-none" style="touch-action: none;"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- ADJUSTABLE RESIZER BAR -->
+                    <div id="drag-resizer" class="hidden w-3 bg-slate-800/50 hover:bg-cyan-500/80 cursor-col-resize rounded-full transition-colors active:bg-cyan-400 shrink-0 relative group flex items-center justify-center z-20">
+                        <div class="w-1 h-12 bg-cyan-400/50 rounded-full group-hover:bg-white transition-colors"></div>
+                    </div>
+
+                    <!-- RIGHT: LAB WORKSPACE (Viewer + Controls) -->
+                    <div id="lab-workspace" class="flex-1 flex flex-col lg:flex-row gap-6 min-w-0 transition-all duration-300">
+                        
+                        <!-- CENTER: 3D VIEWER (The HUD) -->
+                        <div id="viewer-panel" class="flex-1 bg-[#040814]/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] relative overflow-hidden flex flex-col shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-move group min-h-[400px] lg:min-h-[500px]">
+                            
+                            <!-- Holographic HUD Corners -->
+                            <div class="hud-corner hud-tl"></div>
+                            <div class="hud-corner hud-tr"></div>
+                            <div class="hud-corner hud-bl"></div>
+                            <div class="hud-corner hud-br"></div>
+
+                            <!-- Top Left Specs (Teacher Friendly) -->
+                            <div class="absolute top-6 left-8 z-20 flex flex-col gap-1 pointer-events-none drop-shadow-md">
+                                <span class="text-cyan-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5"><i data-lucide="focus" class="w-3 h-3"></i> Classroom Mode</span>
+                                <span class="text-slate-400 text-xs font-mono">Lab Module 01 Active</span>
+                                <span class="text-slate-500 text-[10px] mt-2 hidden sm:block">Drag to rotate • Scroll to zoom</span>
+                            </div>
+
+                            <!-- Stop Button -->
+                            <button id="stop-btn" onclick="stopSimulation()" class="absolute top-6 right-8 z-20 px-6 py-2.5 bg-red-500/20 hover:bg-red-500/40 border border-red-500/40 text-red-100 rounded-xl transition-all hidden font-bold flex items-center gap-2 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.3)] active:scale-95 hover:text-white hover:shadow-[0_0_30px_rgba(239,68,68,0.5)]">
+                                <i data-lucide="octagon-alert" class="w-4 h-4 fill-current"></i> Stop Reaction
+                            </button>
+
+                            <!-- Three.js Canvas Container -->
+                            <div id="three-container" class="absolute inset-0 w-full h-full outline-none z-10"></div>
+                            
+                            <!-- AI Status Overlay -->
+                            <div id="ai-loading" class="absolute inset-0 bg-[#02050f]/90 backdrop-blur-xl z-30 flex-col items-center justify-center hidden">
+                                <div class="relative w-32 h-32 mb-8 flex items-center justify-center">
+                                    <div class="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+                                    <div class="absolute inset-0 border-4 border-transparent border-t-cyan-400 rounded-full animate-spin"></div>
+                                    <div class="absolute inset-3 border-4 border-transparent border-b-indigo-500 rounded-full animate-[spin_2s_linear_infinite_reverse]"></div>
+                                    <div class="absolute inset-6 border-4 border-transparent border-l-purple-400 rounded-full animate-[spin_4s_linear_infinite]"></div>
+                                    <i data-lucide="cpu" class="w-10 h-10 text-cyan-300 animate-pulse"></i>
+                                </div>
+                                <h3 class="text-xl font-extrabold text-white tracking-[0.3em] uppercase mb-2 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)] text-center px-4">AI Synthesizing...</h3>
+                                <span class="text-cyan-400 font-mono text-xs tracking-widest animate-pulse text-center px-4" id="ai-loading-text">Analyzing chemical properties...</span>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: CONTROL CONSOLE -->
+                        <div id="controls-panel" class="w-full lg:w-[350px] xl:w-[400px] flex flex-col gap-6 h-full shrink-0 transition-all duration-300">
+                            
+                            <div class="bg-gradient-to-b from-[#0a0f1d] to-[#040814] backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl flex-1 flex flex-col overflow-y-auto custom-scrollbar relative">
+                                <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-3xl rounded-full pointer-events-none"></div>
+
+                                <h3 class="text-lg font-black text-white mb-6 flex items-center gap-3 shrink-0 border-b border-white/10 pb-5">
+                                    <div class="p-1.5 bg-indigo-500/20 rounded-md border border-indigo-500/30"><i data-lucide="settings-2" class="text-indigo-400 w-5 h-5"></i></div>
+                                    Reaction Setup
+                                </h3>
+                                
+                                <!-- Reactant Count & Inputs -->
+                                <div class="flex-1 flex flex-col gap-4 mt-2 relative z-10">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em]">Number of Reactants</label>
+                                        <div class="relative w-32">
+                                            <select id="reactant-count" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white focus:outline-none focus:border-cyan-500/50 appearance-none cursor-pointer transition-colors" onchange="updateReactantFields()">
+                                                <option value="1">1 Reactant</option>
+                                                <option value="2" selected>2 Reactants</option>
+                                                <option value="3">3 Reactants</option>
+                                                <option value="4">4 Reactants</option>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-cyan-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="reactants-list" class="flex flex-col gap-3">
+                                        <!-- Populated dynamically via JS -->
+                                    </div>
+
+                                    <!-- Reaction Conditions -->
+                                    <div class="mt-6">
+                                        <label class="text-[10px] text-slate-400 font-black uppercase tracking-[0.15em] mb-3 block">Environmental Conditions</label>
+                                        <div class="relative neon-input rounded-xl overflow-hidden transition-all">
+                                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 z-10"><i data-lucide="thermometer" class="w-5 h-5"></i></div>
+                                            <select id="reaction-condition" class="w-full bg-black/60 border border-white/10 focus:border-transparent rounded-xl pl-12 pr-10 py-4 text-white font-bold appearance-none cursor-pointer relative z-0" onchange="handleConditionChange()">
+                                                <option value="None">None (Room Temp)</option>
+                                                <option value="Heat">Heat (Apply Flame)</option>
+                                                <option value="Sunlight">Sunlight (UV)</option>
+                                                <option value="Electricity">Electricity</option>
+                                                <option value="Catalyst">Catalyst Present</option>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-cyan-400 z-10"><i data-lucide="chevron-down" class="w-5 h-5"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Buttons -->
+                                <div class="mt-8 shrink-0 pt-6 border-t border-white/10 relative z-10">
+                                    <button id="react-btn" onclick="startReaction()" class="group relative overflow-hidden w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl font-extrabold shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3 text-lg border border-cyan-400/50">
+                                        <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-shimmer pointer-events-none"></div>
+                                        <i data-lucide="zap" class="w-5 h-5 fill-current relative z-10"></i> 
+                                        <span class="relative z-10">Start Demonstration</span>
+                                    </button>
+                                    <button onclick="clearLab()" class="w-full py-3.5 mt-3 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all border border-white/5 active:scale-95 flex items-center justify-center gap-2">
+                                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset Parameters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- BOTTOM ROW: AI Analytics Output -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-pop-in mt-6">
+                    
+                    <!-- Chemical Equation Box -->
+                    <div class="lg:col-span-1 bg-gradient-to-br from-slate-900/90 to-black border border-white/10 rounded-[2rem] p-8 shadow-xl flex flex-col justify-center text-center relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+                        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <p class="text-xs text-cyan-400 font-black uppercase tracking-[0.2em] mb-4 relative z-10 flex items-center justify-center gap-2"><i data-lucide="sigma" class="w-4 h-4"></i> Balanced Equation</p>
+                        <p id="equation-display" class="font-mono text-xl md:text-2xl text-white font-bold opacity-50 overflow-x-auto custom-scrollbar whitespace-nowrap pb-2 relative z-10 transition-opacity duration-500">
+                            Awaiting Input...
+                        </p>
+                    </div>
+
+                    <!-- Detailed Explanation -->
+                    <div class="lg:col-span-1 bg-gradient-to-br from-slate-900/90 to-black border border-white/10 rounded-[2rem] p-8 shadow-xl relative overflow-hidden group hover:border-indigo-500/30 transition-colors">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><i data-lucide="book-open" class="w-24 h-24 text-indigo-400"></i></div>
+                        <h3 class="text-sm font-black text-indigo-400 uppercase tracking-[0.2em] mb-3 flex items-center gap-2 relative z-10">
+                            <i data-lucide="file-text" class="w-4 h-4"></i> Phenomenon Analysis
+                        </h3>
+                        <div class="text-slate-300 leading-relaxed text-sm pr-2 font-medium relative z-10 h-[120px] overflow-y-auto custom-scrollbar">
+                            <p id="explanation-display" class="opacity-50 italic">Define reactants and start the demonstration to generate an AI-driven scientific breakdown.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✨ EDUCATOR SPECIFIC: Teacher Tip / Common Mistakes -->
+                    <div class="lg:col-span-1 bg-gradient-to-br from-yellow-900/20 to-black border border-yellow-500/20 rounded-[2rem] p-8 shadow-[0_0_30px_rgba(234,179,8,0.05)] relative overflow-hidden group hover:border-yellow-500/40 transition-colors">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity"><i data-lucide="lightbulb" class="w-24 h-24 text-yellow-400"></i></div>
+                        <h3 class="text-sm font-black text-yellow-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2 relative z-10">
+                            <i data-lucide="graduation-cap" class="w-4 h-4"></i> Educator Insight
+                        </h3>
+                        <div class="text-yellow-100/80 leading-relaxed text-sm pr-2 font-medium relative z-10 h-[120px] overflow-y-auto custom-scrollbar">
+                            <p id="teacher-tip-display" class="opacity-50 italic">Crucial teaching points, safety warnings, or common student misconceptions will appear here.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        // --- SIDEBAR TOGGLE LOGIC ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('app-sidebar');
+            // Toggle the sidebar-hidden class
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                sidebar.classList.remove('sidebar-hidden');
+            } else {
+                sidebar.classList.add('sidebar-hidden');
+            }
+            // Trigger resize event so ThreeJS canvas scales correctly
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 350);
+        }
+
+        // --- PDF SPLIT SCREEN LOGIC (With Draggable Resizer & Fullscreen) ---
+        let isPdfOpen = false;
+        let isPdfFullscreen = false;
+        let savedPdfWidth = '45%';
+        const resizer = document.getElementById('drag-resizer');
+        const pdfPanel = document.getElementById('pdf-panel');
+        const mainContainer = document.getElementById('main-container');
+        const pdfFrame = document.getElementById('ncert-pdf-frame');
+        const labWorkspace = document.getElementById('lab-workspace');
+        
+        window.togglePDF = function() {
+            const sidebar = document.getElementById('app-sidebar');
+            const toggleBtn = document.getElementById('toggle-pdf-btn');
+            const btnText = document.getElementById('pdf-btn-text');
+            
+            isPdfOpen = !isPdfOpen;
+            
+            if(isPdfOpen) {
+                // Open PDF Side-by-Side
+                pdfPanel.classList.remove('hidden');
+                pdfPanel.classList.add('flex');
+                
+                // Only set width if not in fullscreen
+                if(!isPdfFullscreen) {
+                    pdfPanel.style.width = savedPdfWidth;
+                    resizer.classList.remove('hidden');
+                    resizer.classList.add('flex');
+                    labWorkspace.style.display = 'flex';
+                }
+                
+                // Hide Sidebar for max screen space
+                sidebar.classList.add('sidebar-hidden');
+                
+                // Update Button styling
+                toggleBtn.classList.add('bg-emerald-500/30', 'border-emerald-500');
+                if(btnText) btnText.innerText = "Close Reference";
+            } else {
+                // Close PDF
+                pdfPanel.classList.add('hidden');
+                pdfPanel.classList.remove('flex');
+                
+                resizer.classList.add('hidden');
+                resizer.classList.remove('flex');
+                
+                // Make sure lab is visible again if it was hidden by fullscreen
+                labWorkspace.style.display = 'flex';
+                
+                // Show Sidebar
+                sidebar.classList.remove('sidebar-hidden');
+                
+                // Reset Button styling
+                toggleBtn.classList.remove('bg-emerald-500/30', 'border-emerald-500');
+                if(btnText) btnText.innerText = "Reference Book";
+            }
+            
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+        };
+
+        // PDF Fullscreen Logic
+        window.togglePDFFullscreen = function() {
+            isPdfFullscreen = !isPdfFullscreen;
+            const fsIcon = document.getElementById('pdf-fs-icon');
+            
+            if(isPdfFullscreen) {
+                // Go Fullscreen
+                savedPdfWidth = pdfPanel.style.width; // Save current width
+                pdfPanel.style.width = '100%';
+                
+                resizer.classList.add('hidden');
+                resizer.classList.remove('flex');
+                
+                labWorkspace.style.display = 'none'; // Hide lab completely
+                
+                fsIcon.setAttribute('data-lucide', 'minimize');
+            } else {
+                // Exit Fullscreen
+                pdfPanel.style.width = savedPdfWidth; // Restore width
+                
+                resizer.classList.remove('hidden');
+                resizer.classList.add('flex');
+                
+                labWorkspace.style.display = 'flex'; // Show lab
+                
+                fsIcon.setAttribute('data-lucide', 'maximize');
+            }
+            lucide.createIcons();
+            setTimeout(() => {
+                resizePdfCanvas();
+                window.dispatchEvent(new Event('resize'));
+            }, 300);
+        };
+
+        // DRAGGABLE SPLITTER LOGIC
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            if(isPdfFullscreen) return; // Disable dragging in fullscreen
+            isResizing = true;
+            document.body.classList.add('resizing', 'cursor-col-resize');
+            // Crucial: Disable pointer events on iframe so mousemove doesn't get swallowed
+            pdfFrame.style.pointerEvents = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const containerRect = mainContainer.getBoundingClientRect();
+            let newWidth = e.clientX - containerRect.left;
+            
+            // Set min and max limits (min 300px for PDF, min 400px for Lab)
+            const minWidth = 300;
+            const maxWidth = containerRect.width - 400; 
+            
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                pdfPanel.style.width = newWidth + 'px';
+                pdfPanel.style.flex = 'none'; // Prevent flex-1 from overriding
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('resizing', 'cursor-col-resize');
+                pdfFrame.style.pointerEvents = 'auto'; // Re-enable iframe interaction
+                resizePdfCanvas(); // Fix drawing canvas size
+                window.dispatchEvent(new Event('resize')); // Fix Three.js canvas size
+            }
+        });
+
+        // ==========================================
+        // SMART PDF WHITEBOARD LOGIC (Write on book)
+        // ==========================================
+        const pdfCanvas = document.getElementById('pdf-whiteboard');
+        const pdfCtx = pdfCanvas.getContext('2d');
+        let isPdfDrawing = false;
+        let currentPdfMode = 'pan'; // pan, draw, highlight, erase
+        let pdfStrokeColor = '#ef4444';
+        let pdfStrokeWidth = 3;
+
+        function resizePdfCanvas() {
+            pdfCanvas.width = pdfCanvas.offsetWidth;
+            pdfCanvas.height = pdfCanvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizePdfCanvas);
+
+        window.setPdfMode = function(mode) {
+            currentPdfMode = mode;
+            
+            // Reset active styles
+            ['pdf-tool-pan', 'pdf-tool-draw', 'pdf-tool-highlight', 'pdf-tool-erase'].forEach(id => {
+                document.getElementById(id).classList.remove('pdf-tool-active');
+            });
+            document.getElementById(`pdf-tool-${mode}`).classList.add('pdf-tool-active');
+            
+            if(mode === 'pan') {
+                pdfCanvas.style.pointerEvents = 'none'; // Clicks go to iframe (scrolling)
+                pdfCanvas.style.cursor = 'default';
+            } else {
+                pdfCanvas.style.pointerEvents = 'auto'; // Clicks caught by canvas (drawing)
+                if(mode === 'draw') pdfCanvas.style.cursor = 'crosshair';
+                if(mode === 'highlight') pdfCanvas.style.cursor = 'text';
+                if(mode === 'erase') pdfCanvas.style.cursor = 'cell';
+            }
+        };
+
+        window.setPdfColor = function(color) {
+            pdfStrokeColor = color;
+            if(currentPdfMode === 'pan' || currentPdfMode === 'erase') {
+                setPdfMode('draw');
+            }
+        };
+
+        window.clearPdfCanvas = function() {
+            pdfCtx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+        };
+
+        // Mouse Events for drawing
+        pdfCanvas.addEventListener('mousedown', (e) => { if(currentPdfMode !== 'pan') { isPdfDrawing = true; drawOnPdf(e); } });
+        pdfCanvas.addEventListener('mouseup', () => { isPdfDrawing = false; pdfCtx.beginPath(); });
+        pdfCanvas.addEventListener('mousemove', drawOnPdf);
+        
+        // Touch Events
+        pdfCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(currentPdfMode !== 'pan') { isPdfDrawing = true; drawOnPdf(e.touches[0]); } });
+        pdfCanvas.addEventListener('touchend', () => { isPdfDrawing = false; pdfCtx.beginPath(); });
+        pdfCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawOnPdf(e.touches[0]); });
+
+        function drawOnPdf(e) {
+            if (!isPdfDrawing || currentPdfMode === 'pan') return;
+            const rect = pdfCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            pdfCtx.lineCap = 'round';
+            pdfCtx.lineJoin = 'round';
+
+            if (currentPdfMode === 'erase') {
+                pdfCtx.globalCompositeOperation = "destination-out";
+                pdfCtx.lineWidth = pdfStrokeWidth * 6; 
+                pdfCtx.globalAlpha = 1.0;
+            } else if (currentPdfMode === 'highlight') {
+                pdfCtx.globalCompositeOperation = "source-over";
+                pdfCtx.strokeStyle = pdfStrokeColor;
+                pdfCtx.lineWidth = pdfStrokeWidth * 5;
+                pdfCtx.globalAlpha = 0.3; // Make it see-through
+            } else {
+                pdfCtx.globalCompositeOperation = "source-over";
+                pdfCtx.strokeStyle = pdfStrokeColor;
+                pdfCtx.lineWidth = pdfStrokeWidth;
+                pdfCtx.globalAlpha = 1.0;
+            }
+
+            pdfCtx.lineTo(x, y);
+            pdfCtx.stroke();
+            pdfCtx.beginPath();
+            pdfCtx.moveTo(x, y);
+        }
+
+
+        // --- UI DYNAMIC REACTANTS LOGIC ---
+        function updateReactantFields() {
+            const count = parseInt(document.getElementById('reactant-count').value);
+            const list = document.getElementById('reactants-list');
+            list.innerHTML = '';
+            
+            for(let i=1; i<=count; i++) {
+                const placeholder = i===1 ? "e.g., Magnesium (Mg)" : (i===2 ? "e.g., Oxygen (O2)" : "e.g., Catalyst");
+                const div = document.createElement('div');
+                div.className = "relative neon-input rounded-xl overflow-hidden transition-all bg-black/60 border border-white/10 focus-within:bg-black/80";
+                div.innerHTML = `
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500"><i data-lucide="test-tube" class="w-4 h-4"></i></div>
+                    <input type="text" id="reactant-${i}" placeholder="${placeholder}" class="w-full bg-transparent pl-11 pr-4 py-3.5 text-white placeholder:text-slate-600 outline-none font-bold text-sm">
+                `;
+                list.appendChild(div);
+                
+                if (i < count) {
+                    const plus = document.createElement('div');
+                    plus.className = 'flex justify-center text-cyan-500/50 py-1';
+                    plus.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i>';
+                    list.appendChild(plus);
+                }
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        
+        updateReactantFields();
+
+        // DOM Elements
+        const aiLoadingOverlay = document.getElementById('ai-loading');
+        const equationDisplay = document.getElementById('equation-display');
+        const explanationDisplay = document.getElementById('explanation-display');
+        const teacherTipDisplay = document.getElementById('teacher-tip-display');
+        const reactBtn = document.getElementById('react-btn');
+        const simTimer = document.getElementById('sim-timer');
+        const timerIndicator = document.getElementById('timer-indicator');
+        const stopBtn = document.getElementById('stop-btn');
+        const conditionSelect = document.getElementById('reaction-condition');
+
+        let timerInterval;
+        let startTime;
+        let isSimulating = false;
+
+        // --- HIGH REALISM THREE.JS 360° SETUP ---
+        const container = document.getElementById('three-container');
+        const scene = new THREE.Scene();
+        
+        const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 2, 18);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.3; 
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enablePan = false;
+        controls.minDistance = 8;
+        controls.maxDistance = 25;
+        controls.target.set(0, 0, 0);
+
+        // Studio Lighting Setup
+        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.5); dirLight1.position.set(5, 10, 7); scene.add(dirLight1);
+        const dirLight2 = new THREE.DirectionalLight(0x06b6d4, 2.0); dirLight2.position.set(-5, 10, -5); scene.add(dirLight2); // Cyan back light
+        const bottomLight = new THREE.PointLight(0xffffff, 1.5, 20); bottomLight.position.set(0, -6, 0); scene.add(bottomLight);
+
+        // --- DYNAMIC EQUIPMENT GROUPS ---
+        const flaskGroup = new THREE.Group(); scene.add(flaskGroup); flaskGroup.position.y = -1.0;
+        const burnerGroup = new THREE.Group(); scene.add(burnerGroup); burnerGroup.visible = false; 
+        const tripodGroup = new THREE.Group(); scene.add(tripodGroup); tripodGroup.visible = false; 
+
+        // Tripod
+        const tripodRing = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.05, 16, 32), new THREE.MeshStandardMaterial({color: 0x222222}));
+        tripodRing.rotation.x = Math.PI / 2; tripodRing.position.y = -2.0; tripodGroup.add(tripodRing);
+        for(let i=0; i<3; i++) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 16), new THREE.MeshStandardMaterial({color: 0x222222}));
+            const angle = (i * Math.PI * 2) / 3;
+            leg.position.set(Math.cos(angle)*1.2, -3.2, Math.sin(angle)*1.2);
+            leg.rotation.z = Math.cos(angle) * 0.1; leg.rotation.x = -Math.sin(angle) * 0.1;
+            tripodGroup.add(leg);
+        }
+
+        // Burner
+        const burnerBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.2, 32), new THREE.MeshStandardMaterial({color: 0x111111, metalness: 0.9})); burnerBase.position.y = -4.4;
+        const burnerTube = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.2, 32), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 1.0})); burnerTube.position.y = -3.7;
+        burnerGroup.add(burnerBase, burnerTube);
+
+        // Burner Flame
+        const burnerFlameCount = 150; const burnerFlameGeo = new THREE.BufferGeometry(); const burnerFlamePos = new Float32Array(burnerFlameCount * 3);
+        for(let i=0; i<burnerFlameCount; i++){ burnerFlamePos[i*3] = (Math.random()-0.5)*0.2; burnerFlamePos[i*3+1] = -3.1 + Math.random()*1.0; burnerFlamePos[i*3+2] = (Math.random()-0.5)*0.2; }
+        burnerFlameGeo.setAttribute('position', new THREE.BufferAttribute(burnerFlamePos, 3));
+        const burnerFlameSystem = new THREE.Points(burnerFlameGeo, new THREE.PointsMaterial({ color: 0x00aaff, size: 0.3, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+        burnerGroup.add(burnerFlameSystem);
+
+        // Flask (Erlenmeyer)
+        const points = [];
+        points.push(new THREE.Vector2(0, 0), new THREE.Vector2(2.5, 0), new THREE.Vector2(2.6, 0.2), new THREE.Vector2(0.9, 3.5), new THREE.Vector2(0.9, 5.0), new THREE.Vector2(1.0, 5.0), new THREE.Vector2(1.0, 5.2), new THREE.Vector2(0.8, 5.2), new THREE.Vector2(0.8, 3.5), new THREE.Vector2(2.4, 0.3), new THREE.Vector2(2.4, 0.1), new THREE.Vector2(0, 0.1));
+        const flaskGeo = new THREE.LatheGeometry(points, 64); flaskGeo.translate(0, -2.5, 0);
+        flaskGroup.add(new THREE.Mesh(flaskGeo, new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.05, transmission: 0.98, ior: 1.5, transparent: true, side: THREE.DoubleSide })));
+
+        // Solids
+        const solidGroup = new THREE.Group(); scene.add(solidGroup);
+        function spawnSolidGranules(colorHex, isOnTripod = false) {
+            solidGroup.clear();
+            const chunkMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8, metalness: 0.4 });
+            const baseY = isOnTripod ? -1.9 : -3.2; const spreadRadius = isOnTripod ? 0.6 : 1.6;
+            for (let i = 0; i < 25; i++) {
+                const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), chunkMat);
+                const angle = Math.random() * Math.PI * 2; const r = Math.random() * spreadRadius;
+                mesh.position.set(Math.cos(angle)*r, baseY + (Math.random()*0.4), Math.sin(angle)*r);
+                mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+                solidGroup.add(mesh);
+            }
+        }
+
+        // Liquid
+        const liquidMaterial = new THREE.MeshPhysicalMaterial({ color: 0x000000, transmission: 0.8, opacity: 0.9, roughness: 0.1, ior: 1.33, transparent: true, side: THREE.DoubleSide });
+        let liquidMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.35, 2.35, 0.01, 32), liquidMaterial); flaskGroup.add(liquidMesh);
+
+        // Fumes, Reaction Flame, Bubbles setup...
+        const fumeCount = 1200; const fumePos = new Float32Array(fumeCount * 3);
+        for(let i=0; i<fumeCount; i++) { fumePos[i*3] = (Math.random()-0.5)*2; fumePos[i*3+1] = -2+Math.random()*2; fumePos[i*3+2] = (Math.random()-0.5)*2; }
+        const fumeGeo = new THREE.BufferGeometry(); fumeGeo.setAttribute('position', new THREE.BufferAttribute(fumePos, 3));
+        const fumeMat = new THREE.PointsMaterial({ color: 0x8b3a0f, size: 0.8, transparent: true, opacity: 0.3, blending: THREE.NormalBlending, depthWrite: false });
+        const fumeSystem = new THREE.Points(fumeGeo, fumeMat); fumeSystem.visible = false; scene.add(fumeSystem);
+
+        const rxnFlameCount = 600; const rxnFlamePos = new Float32Array(rxnFlameCount * 3);
+        for(let i=0; i<rxnFlameCount; i++){ rxnFlamePos[i*3] = (Math.random()-0.5)*0.5; rxnFlamePos[i*3+1] = -1.8+Math.random()*1.5; rxnFlamePos[i*3+2] = (Math.random()-0.5)*0.5; }
+        const rxnFlameGeo = new THREE.BufferGeometry(); rxnFlameGeo.setAttribute('position', new THREE.BufferAttribute(rxnFlamePos, 3));
+        const rxnFlameMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+        const rxnFlameSystem = new THREE.Points(rxnFlameGeo, rxnFlameMat); rxnFlameSystem.visible = false; scene.add(rxnFlameSystem);
+
+        const bubbleCount = 250; const bubblePos = new Float32Array(bubbleCount * 3);
+        for(let i=0; i<bubbleCount; i++) { bubblePos[i*3] = (Math.random()-0.5)*4; bubblePos[i*3+1] = -2.4+Math.random()*2; bubblePos[i*3+2] = (Math.random()-0.5)*4; }
+        const bubbleGeo = new THREE.BufferGeometry(); bubbleGeo.setAttribute('position', new THREE.BufferAttribute(bubblePos, 3));
+        const bubbleSystem = new THREE.Points(bubbleGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.6 }));
+        bubbleSystem.visible = false; flaskGroup.add(bubbleSystem);
+
+        // Animation Vars
+        let currentLiquidHeight = 0.01; let targetLiquidHeight = 0.01; let targetLiquidColor = new THREE.Color(0x000000);
+        let fumesActive = false, bubblesActive = false, rxnFlameActive = false;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Liquid morph
+            if (flaskGroup.visible && Math.abs(targetLiquidHeight - currentLiquidHeight) > 0.005) {
+                currentLiquidHeight += (targetLiquidHeight - currentLiquidHeight) * 0.03;
+                const t = Math.min(currentLiquidHeight / 3.2, 1.0);
+                const topRadius = 2.35 - t * (2.35 - 0.8);
+                liquidMesh.geometry.dispose();
+                liquidMesh.geometry = new THREE.CylinderGeometry(topRadius, 2.35, currentLiquidHeight, 64);
+                liquidMesh.position.y = -2.4 + (currentLiquidHeight / 2);
+            }
+            liquidMaterial.color.lerp(targetLiquidColor, 0.015);
+
+            // Particle Updates
+            if(burnerGroup.visible) {
+                const b = burnerFlameGeo.attributes.position.array;
+                for(let i=0; i<burnerFlameCount; i++){
+                    b[i*3+1] += 0.05 + Math.random()*0.02;
+                    if(b[i*3+1] > -2.0) { b[i*3+1] = -3.1; b[i*3] = (Math.random()-0.5)*0.2; b[i*3+2] = (Math.random()-0.5)*0.2; }
+                }
+                burnerFlameGeo.attributes.position.needsUpdate = true;
+            }
+
+            if(rxnFlameActive && rxnFlameSystem.visible) {
+                const r = rxnFlameGeo.attributes.position.array;
+                for(let i=0; i<rxnFlameCount; i++){
+                    r[i*3+1] += 0.08 + Math.random()*0.05; r[i*3] += (Math.random()-0.5)*0.08; r[i*3+2] += (Math.random()-0.5)*0.08;
+                    if(r[i*3+1] > 2.0) { r[i*3+1] = -1.8; r[i*3] = (Math.random()-0.5)*0.5; r[i*3+2] = (Math.random()-0.5)*0.5; }
+                }
+                rxnFlameGeo.attributes.position.needsUpdate = true;
+            }
+
+            if (fumesActive && fumeSystem.visible) {
+                const p = fumeGeo.attributes.position.array;
+                for (let i = 0; i < fumeCount; i++) {
+                    p[i*3+1] += 0.03 + Math.random()*0.04; 
+                    if(flaskGroup.visible) {
+                        if (p[i*3+1] < 4.5 && p[i*3+1] > 1.5) { p[i*3] *= 0.95; p[i*3+2] *= 0.95; } 
+                        else if (p[i*3+1] >= 4.5) { p[i*3] += (Math.random()-0.5)*0.06; p[i*3+2] += (Math.random()-0.5)*0.06; }
+                    } else { p[i*3] += (Math.random()-0.5)*0.08; p[i*3+2] += (Math.random()-0.5)*0.08; }
+
+                    if (p[i*3+1] > 12) {
+                        p[i*3+1] = flaskGroup.visible ? (-2.0+Math.random()) : (-1.5+Math.random());
+                        p[i*3] = (Math.random()-0.5)*2.0; p[i*3+2] = (Math.random()-0.5)*2.0;
+                    }
+                }
+                fumeGeo.attributes.position.needsUpdate = true;
+            }
+
+            if (bubblesActive && bubbleSystem.visible) {
+                const b = bubbleGeo.attributes.position.array;
+                for (let i = 0; i < bubbleCount; i++) {
+                    b[i*3+1] += 0.02 + Math.random()*0.02; 
+                    const maxH = -2.4 + currentLiquidHeight; 
+                    if (b[i*3+1] > maxH) { b[i*3+1] = -2.4; b[i*3] = (Math.random()-0.5)*2.0; b[i*3+2] = (Math.random()-0.5)*2.0; }
+                }
+                bubbleGeo.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => { 
+            camera.aspect = container.clientWidth / container.clientHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(container.clientWidth, container.clientHeight); 
+        });
+
+        function handleConditionChange() { burnerGroup.visible = (conditionSelect.value === "Heat"); }
+
+        // --- TYPEWRITER LOGIC ---
+        let typeTimeouts = [];
+        function clearTypewriters() { typeTimeouts.forEach(clearTimeout); typeTimeouts = []; }
+        
+        function typeWriterEffect(element, htmlText, speed = 20, callback) {
+            element.innerHTML = ''; element.classList.add('cursor-blink');
+            const tempDiv = document.createElement('div'); tempDiv.innerHTML = htmlText;
+            const nodes = Array.from(tempDiv.childNodes);
+            let nIdx = 0, tIdx = 0;
+
+            function typeNext() {
+                if (nIdx >= nodes.length) { element.classList.remove('cursor-blink'); if(callback) callback(); return; }
+                const node = nodes[nIdx];
+                if (node.nodeType === Node.TEXT_NODE) {
+                    if (tIdx < node.textContent.length) {
+                        element.appendChild(document.createTextNode(node.textContent.charAt(tIdx))); tIdx++;
+                        typeTimeouts.push(setTimeout(typeNext, speed));
+                    } else { nIdx++; tIdx = 0; typeNext(); }
+                } else {
+                    const clone = node.cloneNode(false); element.appendChild(clone);
+                    if (node.childNodes.length > 0) clone.innerHTML = node.innerHTML;
+                    nIdx++; tIdx = 0; typeTimeouts.push(setTimeout(typeNext, speed));
+                }
+            }
+            typeNext();
+        }
+
+        // --- SIMULATION LOGIC ---
+        function updateTimer() {
+            const d = new Date().getTime() - startTime;
+            simTimer.innerText = `${String(Math.floor((d%(1000*60*60))/(1000*60))).padStart(2,'0')}:${String(Math.floor((d%(1000*60))/1000)).padStart(2,'0')}:${String(Math.floor((d%1000)/10)).padStart(2,'0')}`;
+        }
+
+        async function startReaction() {
+            const count = parseInt(document.getElementById('reactant-count').value);
+            const reactants = [];
+            for(let i=1; i<=count; i++) { const v = document.getElementById(`reactant-${i}`).value.trim(); if(v) reactants.push(v); }
+            const condition = conditionSelect.value;
+
+            if (reactants.length === 0) { alert("Professor, please define at least one reactant."); return; }
+
+            // Loading State
+            reactBtn.disabled = true;
+            aiLoadingOverlay.classList.remove('hidden'); aiLoadingOverlay.classList.add('flex');
+            
+            targetLiquidHeight = 0.01; solidGroup.clear();
+            fumesActive = false; fumeSystem.visible = false; bubblesActive = false; bubbleSystem.visible = false; rxnFlameActive = false; rxnFlameSystem.visible = false;
+            
+            handleConditionChange(); flaskGroup.visible = true; tripodGroup.visible = false;
+            
+            equationDisplay.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-cyan-500"></i>';
+            explanationDisplay.innerHTML = '<span class="opacity-50 text-indigo-400">Synthesizing data...</span>';
+            teacherTipDisplay.innerHTML = '<span class="opacity-50 text-yellow-500">Generating pedagogical insights...</span>';
+            clearTypewriters(); 
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                // GEMINI AI INTEGRATION (EDUCATOR PROMPT)
+                const result = await fetchReactionData(reactants, condition);
+                
+                aiLoadingOverlay.classList.add('hidden'); aiLoadingOverlay.classList.remove('flex');
+                const isHeatingSolidOnly = condition === 'Heat' && !result.initial.hasLiquid;
+                if(isHeatingSolidOnly) { flaskGroup.visible = false; tripodGroup.visible = true; }
+
+                if(result.initial.hasSolid) spawnSolidGranules(result.initial.solidColorHex, isHeatingSolidOnly);
+                if(result.initial.hasLiquid) { targetLiquidColor = new THREE.Color(result.initial.liquidColorHex || '#ffffff'); targetLiquidHeight = 1.5; }
+                
+                isSimulating = true; startTime = new Date().getTime();
+                timerInterval = setInterval(updateTimer, 10);
+                timerIndicator.style.display = 'block'; stopBtn.classList.remove('hidden');
+
+                // UI Updates
+                equationDisplay.innerHTML = result.equation || "No Reaction";
+                equationDisplay.className = `font-mono text-xl md:text-2xl font-bold transition-opacity duration-500 overflow-x-auto custom-scrollbar whitespace-nowrap pb-2 relative z-10 ${result.reactionOccurs ? 'text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-slate-400'}`;
+                
+                typeWriterEffect(explanationDisplay, `<p>${result.explanation.replace(/\n/g, '<br>')}</p>`, 20, () => {
+                    // Type teacher tip after explanation finishes
+                    typeWriterEffect(teacherTipDisplay, `<p>${(result.teacherTip || "Ensure students observe the physical changes carefully.").replace(/\n/g, '<br>')}</p>`, 25);
+                });
+
+                // Trigger visual reaction
+                setTimeout(() => {
+                    if(!isSimulating) return; 
+                    if(result.reactionOccurs) {
+                        if(result.initial.hasLiquid) { targetLiquidHeight = 2.5; targetLiquidColor = new THREE.Color(result.final.liquidColorHex || '#4ade80'); }
+                        if(result.initial.hasSolid) {
+                            const newHex = result.final.solidColorHex || result.initial.solidColorHex;
+                            solidGroup.children.forEach(m => { m.material.color.setHex(newHex.replace('#', '0x')); if(result.initial.hasLiquid) m.scale.set(0.1, 0.1, 0.1); });
+                        }
+                        if(result.final.fumes && result.final.fumes.present) { fumeMat.color = new THREE.Color(result.final.fumes.colorHex || '#8b3a0f'); fumeSystem.visible = true; fumesActive = true; }
+                        if(result.final.flame && result.final.flame.present) { rxnFlameMat.color = new THREE.Color(result.final.flame.colorHex || '#ffffff'); rxnFlameSystem.visible = true; rxnFlameActive = true; }
+                        if(result.final.bubbles) { bubbleSystem.visible = true; bubblesActive = true; }
+                    }
+                }, 1500); 
+
+            } catch (error) {
+                aiLoadingOverlay.classList.add('hidden'); aiLoadingOverlay.classList.remove('flex');
+                explanationDisplay.innerHTML = `<p class="text-red-400 font-bold">API Error: ${error.message}</p>`;
+                teacherTipDisplay.innerHTML = `<p class="text-slate-500">System offline.</p>`;
+                equationDisplay.innerHTML = "Error";
+            }
+
+            reactBtn.disabled = false;
+        }
+
+        function stopSimulation() {
+            clearInterval(timerInterval); isSimulating = false;
+            timerIndicator.style.display = 'none'; stopBtn.classList.add('hidden');
+            fumesActive = false; bubblesActive = false; rxnFlameActive = false;
+            setTimeout(() => { fumeSystem.visible = false; bubbleSystem.visible = false; rxnFlameSystem.visible = false; }, 2000);
+        }
+
+        function clearLab() {
+            stopSimulation(); simTimer.innerText = "00:00:00";
+            const c = parseInt(document.getElementById('reactant-count').value);
+            for(let i=1; i<=c; i++) { const el = document.getElementById(`reactant-${i}`); if(el) el.value = ''; }
+            
+            equationDisplay.innerHTML = "Awaiting Input..."; equationDisplay.className = 'font-mono text-xl md:text-2xl text-white font-bold opacity-50 overflow-x-auto custom-scrollbar whitespace-nowrap pb-2 relative z-10 transition-opacity duration-500';
+            clearTypewriters();
+            explanationDisplay.innerHTML = '<span class="opacity-50 italic text-slate-300">Define reactants and start the demonstration to generate an AI-driven scientific breakdown.</span>';
+            teacherTipDisplay.innerHTML = '<span class="opacity-50 italic text-yellow-100/80">Crucial teaching points, safety warnings, or common student misconceptions will appear here.</span>';
+            
+            targetLiquidHeight = 0.01; solidGroup.clear();
+            fumesActive = false; fumeSystem.visible = false; bubblesActive = false; bubbleSystem.visible = false; rxnFlameActive = false; rxnFlameSystem.visible = false;
+            
+            conditionSelect.value = "None"; handleConditionChange();
+            flaskGroup.visible = true; tripodGroup.visible = false; controls.reset();
+            
+            const url = new URL(window.location); url.search = ''; window.history.replaceState({}, document.title, url);
+        }
+
+        // --- GEMINI API CALL WITH TEACHER SCHEMA ---
+        async function fetchReactionData(reactants, condition) {
+            if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) throw new Error("Missing API Key");
+
+            const prompt = `Reactants: [${reactants.join(", ")}]. Condition: ${condition}. Predict reaction. If heating solid metal (Mg, Cu), assume oxidation in air.`;
+            const systemText = `You are the backend logic for an Educator's 3D Chemistry Sandbox. Respond ONLY with valid JSON matching this schema:
+            {
+              "reactionOccurs": true/false,
+              "equation": "Balanced equation. Empty if false.",
+              "explanation": "Scientific explanation of the mechanism.",
+              "teacherTip": "A very useful tip for the teacher (e.g., 'Warn students about the blinding light', or 'Relate this to chapter 1 NCERT Q5').",
+              "initial": { "hasSolid": true/false, "solidColorHex": "Hex color", "hasLiquid": true/false, "liquidColorHex": "Hex color" },
+              "final": { "liquidColorHex": "Hex color", "solidColorHex": "Hex color", "fumes": { "present": true/false, "colorHex": "Hex" }, "flame": { "present": true/false, "colorHex": "Hex" }, "bubbles": true/false }
+            }`;
+
+            // Try standard models
+            for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite"]) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: systemText }] }, generationConfig: { responseMimeType: "application/json" } })
+                    });
+                    const data = await res.json();
+                    if (data.error) continue;
+                    let text = data.candidates[0].content.parts[0].text;
+                    return JSON.parse(text.replace(/^```json\n?/, '').replace(/```$/, '').trim());
+                } catch(e) { console.warn(e); }
+            }
+            throw new Error("API Limit reached.");
+        }
+
+        // --- URL AUTO-START & NCERT PDF AUTO-OPEN LOGIC ---
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            const params = new URLSearchParams(window.location.search);
+            const pdfUrl = params.get('pdf');
+            
+            // Check if PDF is requested from NCERT Library
+            if (pdfUrl) {
+                // Show toggle button
+                document.getElementById('toggle-pdf-btn').classList.remove('hidden');
+                document.getElementById('toggle-pdf-btn').classList.add('flex');
+                
+                // Directly load the local file path into the iframe (bypassing Google Docs)
+                document.getElementById('ncert-pdf-frame').src = pdfUrl + '#toolbar=0';
+                
+                // Automatically open the split screen
+                togglePDF();
+                
+                // Ensure whiteboard canvas is correctly sized
+                setTimeout(resizePdfCanvas, 500);
+            }
+
+            if (params.get('autoStart') === 'true') {
+                let reactants = [];
+                for(let i=1; i<=3; i++) if (params.get(`r${i}`)) reactants.push(params.get(`r${i}`));
+                if (reactants.length > 0) {
+                    document.getElementById('reactant-count').value = reactants.length; updateReactantFields();
+                    reactants.forEach((r, i) => { const el = document.getElementById(`reactant-${i+1}`); if(el) el.value = r; });
+                    const t = params.get('name') || '';
+                    if (t.toLowerCase().includes('heat') || t.toLowerCase().includes('burn') || t.toLowerCase().includes('thermite')) {
+                        conditionSelect.value = "Heat"; handleConditionChange();
+                    }
+                    setTimeout(startReaction, 500); 
+                }
+            }
+        });
+    </script>
+</body>
+</html>

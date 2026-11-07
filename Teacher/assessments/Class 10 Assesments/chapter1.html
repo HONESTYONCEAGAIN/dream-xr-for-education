@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ch 1 Assessment - Dream XR</title>
+    
+    <!-- Configs (Adjusted relative path since we are in Class 10 Assesments folder) -->
+    <script src="../../secrets/config.js"></script>
+    <script src="../../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS & Lucide Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'typing': 'typing 1.5s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(40px) scale(0.95)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+                        popIn: { '0%': { opacity: '0', transform: 'scale(0.8)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        typing: { '0%': { width: '0' }, '100%': { width: '100%' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#818cf8' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Anti-Copy & Anti-Select Security Measures */
+        body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Background Pattern */
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(52, 211, 153, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.6); }
+
+        /* Canvas Whiteboard overlay styles */
+        #whiteboard-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none; /* Default off */
+            touch-action: none;
+        }
+
+        .tool-active { background-color: rgba(52, 211, 153, 0.2) !important; color: #34d399 !important; border-color: rgba(52, 211, 153, 0.5) !important; box-shadow: inset 0 0 10px rgba(52, 211, 153, 0.2); }
+        .color-swatch { transition: transform 0.1s; }
+        .color-swatch.active { transform: scale(1.3); border: 2px solid white; }
+
+        /* Watermarks */
+        .watermark {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+            z-index: 5;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            transform: rotate(-45deg);
+        }
+        .wm-tl { top: 10%; left: 5%; }
+        .wm-tr { top: 10%; right: 5%; }
+        .wm-bl { bottom: 10%; left: 5%; }
+        .wm-br { bottom: 10%; right: 5%; }
+        .wm-center { top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 4rem; color: rgba(52, 211, 153, 0.05); }
+
+        /* Q&A Accordion transition */
+        .qa-content { transition: max-height 0.4s ease-out, opacity 0.4s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .qa-content.open { max-height: 500px; opacity: 1; }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-emerald-500/30 flex h-screen relative" id="app-body" oncontextmenu="return false;">
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- AI GENERATING OVERLAY (Random 4-10 seconds) -->
+    <div id="loading-screen" class="fixed inset-0 z-[9999] bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-1000">
+        <div class="relative w-32 h-32 mb-8 flex items-center justify-center">
+            <div class="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-transparent border-t-emerald-400 rounded-full animate-spin"></div>
+            <div class="absolute inset-3 border-4 border-transparent border-b-cyan-500 rounded-full animate-[spin_2s_linear_infinite_reverse]"></div>
+            <i data-lucide="brain-circuit" class="w-10 h-10 text-emerald-300 animate-pulse"></i>
+        </div>
+        <h2 class="text-2xl font-extrabold text-white tracking-widest uppercase mb-2 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)] text-center">Synthesizing Assessment</h2>
+        <p class="text-emerald-400 font-mono text-sm tracking-widest animate-pulse text-center mb-6">Please wait a moment :)</p>
+        
+        <div class="w-64 h-1.5 bg-slate-800 rounded-full overflow-hidden shadow-inner">
+            <div id="loading-bar-fill" class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 w-0"></div>
+        </div>
+    </div>
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-700/20 rounded-full blur-[150px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- SIDEBAR INJECTION -->
+    <div id="sidebar-container" class="z-20 shrink-0 h-full"></div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <a href="../assessments.html" class="w-10 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-slate-300"></i>
+                </a>
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+                    <i data-lucide="file-check-2" class="w-6 h-6 text-emerald-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">Ch 1: Chemical Reactions</h2>
+                    <p class="text-xs text-slate-400 font-medium">Class 10 Science Assessment</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-4 ml-auto">
+                <button onclick="window.showToast('Broadcast Active', 'Assessment has been pushed to all active student devices.', 'success')" class="px-5 py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-colors flex items-center gap-2">
+                    <i data-lucide="radio" class="w-4 h-4"></i> Broadcast to Class
+                </button>
+                <button onclick="window.showToast('Sent successfully', 'Worksheet has been sent to Section A inbox.', 'success')" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all active:scale-95 flex items-center gap-2">
+                    <i data-lucide="send" class="w-4 h-4"></i> Send to Students
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN LAB CONTENT -->
+        <main class="flex-1 flex gap-6 p-6 overflow-hidden relative">
+            
+            <!-- LEFT PANEL: PDF Viewer with Write Mode & Watermarks -->
+            <div class="w-2/3 h-full bg-[#e5e7eb] rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border-4 border-slate-800 flex flex-col relative z-10">
+                
+                <!-- Toolbar -->
+                <div class="p-2 border-b border-slate-300 flex justify-between items-center bg-white shrink-0 shadow-sm z-20 gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="px-3 py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold uppercase tracking-widest border border-red-200">Unsolved Copy</span>
+                    </div>
+                    
+                    <!-- Whiteboard Tools -->
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button onclick="setPdfMode('pan')" id="pdf-tool-pan" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:text-blue-500 transition-all pdf-tool-active tool-active" title="Pan"><i data-lucide="mouse-pointer-2" class="w-4 h-4"></i></button>
+                        <button onclick="setPdfMode('draw')" id="pdf-tool-draw" class="p-1.5 rounded-md text-slate-500 hover:bg-white hover:text-blue-500 transition-all" title="Draw"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+                        <button onclick="setPdfMode('highlight')" id="pdf-tool-highlight" class="p-1.5 rounded-md text-slate-500 hover:bg-yellow-500 transition-all" title="Highlight"><i data-lucide="highlighter" class="w-4 h-4"></i></button>
+                        <button onclick="setPdfMode('erase')" id="pdf-tool-erase" class="p-1.5 rounded-md text-slate-500 hover:bg-red-500 transition-all" title="Erase"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+                        
+                        <div class="w-px h-4 bg-slate-300 mx-1"></div>
+                        <input type="color" id="pdf-color-picker" value="#ef4444" class="w-6 h-6 rounded cursor-pointer border-0 p-0" onchange="setPdfColor(this.value)">
+                        <div class="w-px h-4 bg-slate-300 mx-1"></div>
+                        <button onclick="clearPdfCanvas()" class="p-1.5 rounded-md text-slate-500 hover:text-red-500 transition-colors" title="Clear"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+
+                <!-- PDF Display Area -->
+                <div class="relative flex-1 w-full bg-white overflow-hidden" id="pdf-content-wrapper">
+                    
+                    <!-- Dream XR Security Watermarks -->
+                    <div class="watermark wm-tl">Dream XR</div>
+                    <div class="watermark wm-tr">Dream XR</div>
+                    <div class="watermark wm-center">Dream XR EDUCATOR</div>
+                    <div class="watermark wm-bl">Dream XR</div>
+                    <div class="watermark wm-br">Dream XR</div>
+
+                    <!-- PDF iFrame -->
+                    <!-- Path strictly mapped to the provided structure -->
+                    <iframe id="ncert-pdf-frame" class="absolute inset-0 w-full h-full border-0 z-0 pointer-events-auto" src="pdf/Chemical_Reactions_Class10_Worksheet_Unsolved.pdf#toolbar=0"></iframe>
+                    
+                    <!-- Write Mode Canvas Overlay -->
+                    <canvas id="pdf-whiteboard" class="absolute inset-0 w-full h-full z-10" style="touch-action: none;"></canvas>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Downloads & Interactive Q&A -->
+            <div class="w-1/3 h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 pb-10">
+                
+                <!-- Premium Downloads Section -->
+                <div class="bg-gradient-to-br from-slate-900/90 to-emerald-900/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
+                    <div class="absolute -right-6 -top-6 w-32 h-32 bg-emerald-500/20 blur-2xl rounded-full pointer-events-none"></div>
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i data-lucide="download-cloud" class="w-5 h-5 text-emerald-400"></i> Original Files
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-5">Download the raw DOCX or PDF files. <span class="text-yellow-400 font-bold"><i data-lucide="crown" class="inline w-3 h-3"></i> Premium Feature</span></p>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-white/5">
+                            <span class="text-sm font-semibold text-slate-200">Unsolved Copy</span>
+                            <div class="flex gap-2">
+                                <button onclick="downloadPremiumFile('Unsolved', 'pdf')" class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg transition-colors" title="Download PDF"><i data-lucide="file-text" class="w-4 h-4"></i></button>
+                                <button onclick="downloadPremiumFile('Unsolved', 'docx')" class="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-colors" title="Download DOCX"><i data-lucide="file" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-white/5">
+                            <span class="text-sm font-semibold text-emerald-300">Solved Copy</span>
+                            <div class="flex gap-2">
+                                <button onclick="downloadPremiumFile('Solutions', 'pdf')" class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg transition-colors" title="Download PDF"><i data-lucide="file-text" class="w-4 h-4"></i></button>
+                                <button onclick="downloadPremiumFile('Solutions', 'docx')" class="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-colors" title="Download DOCX"><i data-lucide="file" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Q&A Section -->
+                <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl flex-1">
+                    <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                        <i data-lucide="list-checks" class="w-5 h-5 text-indigo-400"></i> Interactive Solutions
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-6">Click on a question to reveal the explanation.</p>
+                    
+                    <div class="space-y-4" id="qa-container">
+                        <!-- Q1 -->
+                        <div class="bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-indigo-500/30 transition-colors">
+                            <button onclick="toggleQA(1)" class="w-full text-left p-4 focus:outline-none flex justify-between items-start gap-3 group">
+                                <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                                    Q1. MnO₂ + 4HCl → MnCl₂ + 2H₂O + Cl₂. Identify the substance oxidized.
+                                </span>
+                                <i data-lucide="chevron-down" id="qa-icon-1" class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 mt-0.5"></i>
+                            </button>
+                            <div id="qa-ans-1" class="qa-content bg-indigo-900/20 px-4">
+                                <div class="pb-4 pt-2 border-t border-white/5">
+                                    <p class="text-emerald-400 font-bold text-sm mb-2">Answer: (b) HCl</p>
+                                    <p class="text-xs text-slate-300 leading-relaxed"><strong class="text-indigo-300">Explanation:</strong> Oxidation involves the loss of hydrogen or addition of oxygen. In this reaction, HCl loses hydrogen to form Cl₂, so HCl is oxidised.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Q2 -->
+                        <div class="bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-indigo-500/30 transition-colors">
+                            <button onclick="toggleQA(2)" class="w-full text-left p-4 focus:outline-none flex justify-between items-start gap-3 group">
+                                <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                                    Q2. What is observed when a solution of potassium iodide is added to silver nitrate solution?
+                                </span>
+                                <i data-lucide="chevron-down" id="qa-icon-2" class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 mt-0.5"></i>
+                            </button>
+                            <div id="qa-ans-2" class="qa-content bg-indigo-900/20 px-4">
+                                <div class="pb-4 pt-2 border-t border-white/5">
+                                    <p class="text-emerald-400 font-bold text-sm mb-2">Answer: (c) yellow precipitate of AgI is formed</p>
+                                    <p class="text-xs text-slate-300 leading-relaxed"><strong class="text-indigo-300">Explanation:</strong> A double displacement reaction occurs: KI(aq) + AgNO₃(aq) → AgI(s)↓ + KNO₃(aq). Silver iodide (AgI) is insoluble and forms a yellow precipitate.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Q3 -->
+                        <div class="bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-indigo-500/30 transition-colors">
+                            <button onclick="toggleQA(3)" class="w-full text-left p-4 focus:outline-none flex justify-between items-start gap-3 group">
+                                <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                                    Q3. Assertion: White silver chloride turns grey in sunlight.
+                                </span>
+                                <i data-lucide="chevron-down" id="qa-icon-3" class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 mt-0.5"></i>
+                            </button>
+                            <div id="qa-ans-3" class="qa-content bg-indigo-900/20 px-4">
+                                <div class="pb-4 pt-2 border-t border-white/5">
+                                    <p class="text-emerald-400 font-bold text-sm mb-2">Answer: (a) Both A and R are correct.</p>
+                                    <p class="text-xs text-slate-300 leading-relaxed"><strong class="text-indigo-300">Explanation:</strong> White silver chloride undergoes photolytic decomposition in sunlight to yield grey silver metal and chlorine gas (2AgCl → 2Ag + Cl₂).</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Q4 -->
+                        <div class="bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-indigo-500/30 transition-colors">
+                            <button onclick="toggleQA(4)" class="w-full text-left p-4 focus:outline-none flex justify-between items-start gap-3 group">
+                                <span class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                                    Q4. Identify 'x', 'y' and 'z' in: x Pb(NO₃)₂ → y PbO + z NO₂ + O₂
+                                </span>
+                                <i data-lucide="chevron-down" id="qa-icon-4" class="w-4 h-4 text-slate-500 shrink-0 transition-transform duration-300 mt-0.5"></i>
+                            </button>
+                            <div id="qa-ans-4" class="qa-content bg-indigo-900/20 px-4">
+                                <div class="pb-4 pt-2 border-t border-white/5">
+                                    <p class="text-emerald-400 font-bold text-sm mb-2">Answer: (b) 2, 2, 4</p>
+                                    <p class="text-xs text-slate-300 leading-relaxed"><strong class="text-indigo-300">Explanation:</strong> The balanced equation for the thermal decomposition of lead nitrate is: 2Pb(NO₃)₂(s) → 2PbO(s) + 4NO₂(g) + O₂(g). Comparing coefficients gives x=2, y=2, z=4.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN LOGIC -->
+    <script>
+        // --- 1. SECURITY MEASURES (Anti-Copy / Anti-Screenshot) ---
+        // Right click block is handled by oncontextmenu="return false;" in body tag.
+        
+        // Block Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && (e.key === 'p' || e.key === 'c' || e.key === 's' || e.key === 'u' || e.key === 'x')) {
+                e.preventDefault();
+                window.showToast("Security Alert", "Copying, printing, and saving are disabled for copyright protection.", "error");
+            }
+            if (e.key === 'PrintScreen') {
+                navigator.clipboard.writeText(''); // Attempt to clear clipboard
+                window.showToast("Security Alert", "Screenshots are prohibited.", "error");
+            }
+        });
+
+        // --- 2. LOADING SCREEN LOGIC ---
+        window.addEventListener('load', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadingBar = document.getElementById('loading-bar-fill');
+            
+            // Random duration between 4000ms (4s) and 10000ms (10s)
+            const loadTime = Math.floor(Math.random() * 6000) + 4000;
+            
+            // Animate bar to full width over the random time
+            loadingBar.style.transition = `width ${loadTime}ms linear`;
+            loadingBar.style.width = '100%';
+
+            setTimeout(() => {
+                loadingScreen.classList.add('opacity-0');
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    // Load Sidebar once screen is ready
+                    loadSidebar('assessments');
+                }, 1000);
+            }, loadTime);
+            
+            lucide.createIcons();
+            resizeCanvas();
+        });
+
+        // --- 3. TOAST FUNCTION ---
+        window.showToast = function(title, message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>', textColorClass = 'text-blue-400', barColorClass = 'bg-blue-500';
+            if (type === 'success') { iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>'; textColorClass = 'text-green-400'; barColorClass = 'bg-green-500'; }
+            if (type === 'warning') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-yellow-400'; barColorClass = 'bg-yellow-500'; }
+            if (type === 'error') { iconMarkup = '<i data-lucide="shield-alert" class="w-5 h-5"></i>'; textColorClass = 'text-red-400'; barColorClass = 'bg-red-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now();
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 3s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            void toast.offsetWidth;
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            setTimeout(() => { if (toast.parentElement) { toast.classList.remove('translate-x-0'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); } }, 3000);
+        };
+
+        // --- 4. ACCORDION LOGIC ---
+        window.toggleQA = function(id) {
+            const content = document.getElementById(`qa-ans-${id}`);
+            const icon = document.getElementById(`qa-icon-${id}`);
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                icon.classList.remove('rotate-180');
+            } else {
+                content.classList.add('open');
+                icon.classList.add('rotate-180');
+            }
+        };
+
+        // --- 5. SIDEBAR INJECTION ---
+        async function loadSidebar(activePage) {
+            const sidebarContainer = document.getElementById('sidebar-container');
+            try {
+                // Fetching from root sidebar path since we are deep in folders
+                const response = await fetch('../../../sidebar/sidebar.html');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                let html = await response.text();
+                html = html.replace(/\[BASE\]/g, '../../../');
+                sidebarContainer.innerHTML = html;
+                
+                const activeLink = document.querySelector(`.sidebar-link[data-page="${activePage}"]`);
+                if (activeLink) {
+                    activeLink.className = "sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[inset_0_0_20px_rgba(52,211,153,0.15)] transition-all overflow-hidden";
+                    const icon = activeLink.querySelector('i');
+                    if (icon) icon.classList.remove('group-hover:text-emerald-400', 'text-slate-400');
+                }
+                lucide.createIcons();
+            } catch (error) { console.error("Failed to load sidebar:", error); }
+        }
+
+        // --- 6. WHITEBOARD DRAWING LOGIC ---
+        const canvas = document.getElementById('pdf-whiteboard');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentMode = 'pan'; // pan, draw, highlight, erase
+        let strokeColor = '#ef4444';
+        let strokeWidth = 4;
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        window.setPdfMode = function(mode) {
+            currentMode = mode;
+            ['pdf-tool-pan', 'pdf-tool-draw', 'pdf-tool-highlight', 'pdf-tool-erase'].forEach(id => document.getElementById(id).classList.remove('tool-active'));
+            document.getElementById(`pdf-tool-${mode}`).classList.add('tool-active');
+            
+            if(mode === 'pan') {
+                canvas.style.pointerEvents = 'none'; // Pass clicks to iframe
+            } else {
+                canvas.style.pointerEvents = 'auto'; // Capture clicks
+                canvas.style.cursor = mode === 'draw' ? 'crosshair' : (mode === 'highlight' ? 'text' : 'cell');
+            }
+        };
+
+        window.setPdfColor = function(color) {
+            strokeColor = color;
+            if (currentMode === 'pan' || currentMode === 'erase') setPdfMode('draw');
+        };
+
+        window.clearPdfCanvas = function() { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+
+        canvas.addEventListener('mousedown', (e) => { if(currentMode !== 'pan') { isDrawing = true; drawOnPdf(e); } });
+        canvas.addEventListener('mouseup', () => { isDrawing = false; ctx.beginPath(); });
+        canvas.addEventListener('mousemove', drawOnPdf);
+
+        function drawOnPdf(e) {
+            if (!isDrawing || currentMode === 'pan') return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (currentMode === 'erase') {
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.lineWidth = 20; 
+                ctx.globalAlpha = 1.0;
+            } else if (currentMode === 'highlight') {
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 24; 
+                ctx.globalAlpha = 0.3; 
+            } else {
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = strokeWidth;
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+        }
+
+    </script>
+
+    <!-- 7. FIREBASE AUTH & PREMIUM CHECK LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        let currentUser = null;
+        let db = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dream-xr-app';
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            db = getFirestore(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (!user) window.location.href = "../../../login.html";
+                else currentUser = user;
+            });
+        }
+
+        window.downloadPremiumFile = async function(type, format) {
+            if (!currentUser || !db) {
+                window.showToast("Error", "Authentication failed. Please log in again.", "error");
+                return;
+            }
+
+            try {
+                // Check user's plan in Firestore
+                const planRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'plan');
+                const planSnap = await getDoc(planRef);
+                let plan = "Free";
+                if (planSnap.exists() && planSnap.data().activePlan) {
+                    plan = planSnap.data().activePlan;
+                }
+
+                if (plan === "Pro" || plan === "Ultra") {
+                    // Allow Download
+                    const filename = `Chemical_Reactions_Class10_Worksheet_${type}.${format}`;
+                    const link = document.createElement('a');
+                    link.href = `pdf/${filename}`;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    window.showToast("Download Started", `Downloading ${type} Worksheet (${format.toUpperCase()}).`, "success");
+                } else {
+                    // Restrict Download
+                    window.showToast("Premium Feature", "Please upgrade to Pro Scholar or Ultra Vision to download assessment files.", "warning");
+                    setTimeout(() => {
+                        window.location.href = "../../../plans.html";
+                    }, 2000);
+                }
+
+            } catch (error) {
+                console.error("Verification failed:", error);
+                window.showToast("System Error", "Could not verify your subscription status.", "error");
+            }
+        };
+    </script>
+</body>
+</html>

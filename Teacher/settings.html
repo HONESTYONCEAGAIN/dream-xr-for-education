@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | Dream XR</title>
+    
+    <!-- Load Configuration Files -->
+    <script src="secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'typing': 'typing 1.2s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    },
+                    keyframes: {
+                        typing: { '0%': { width: '0' }, '100%': { width: '160px' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#22d3ee' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
+                        slideUp: { '0%': { opacity: 0, transform: 'translateY(40px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body { background-color: #020617; color: #ffffff; }
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.5); }
+        
+        /* Hide default dropdown arrow */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        /* Custom Toggle Switch Colors */
+        .peer:checked ~ .toggle-bg-purple { background-color: #a855f7; border-color: #a855f7; }
+        .peer:checked ~ .toggle-bg-cyan { background-color: #06b6d4; border-color: #06b6d4; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-purple-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:scale-105 transition-transform">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-cyan-400 animate-typing" style="animation: typing 1s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a href="chemistry.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="flask-conical" class="w-5 h-5 group-hover:text-cyan-400 transition-colors animate-float"></i>
+                <span class="font-semibold text-sm">Chemistry Lab</span>
+            </a>
+            <a href="physics.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a href="bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </a>
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Account</p>
+            <a href="plans.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="credit-card" class="w-5 h-5 group-hover:text-yellow-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Plans & Upgrade</span>
+            </a>
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="user" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">My Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <!-- Active Settings Tab -->
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 text-white shadow-inner transition-all">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="font-bold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
+                    <i data-lucide="sliders-horizontal" class="w-6 h-6 text-slate-300"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">System Settings</h2>
+                    <p class="text-xs text-slate-400 font-medium">Configure your immersive experience</p>
+                </div>
+            </div>
+
+            <!-- Right side: Auto-Sync Indicator & Profile -->
+            <div class="flex items-center gap-6 ml-auto">
+                <div id="sync-status" class="flex items-center gap-2 px-4 py-2 bg-slate-900/80 border border-white/10 rounded-full text-xs font-bold text-slate-400 uppercase tracking-widest transition-colors duration-300">
+                    <i data-lucide="cloud-check" class="w-4 h-4 text-green-400" id="sync-icon"></i>
+                    <span id="sync-text">Up to date</span>
+                </div>
+
+                <a href="profile.html" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center overflow-hidden shadow-[0_0_10px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform ml-2 cursor-pointer">
+                    <i data-lucide="user" class="w-5 h-5 text-purple-300"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- SETTINGS CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+            <div class="max-w-4xl mx-auto flex flex-col gap-8 animate-slide-up opacity-0" style="animation-fill-mode: forwards;">
+                
+                <!-- Section 1: Appearance & UI -->
+                <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+                        <i data-lucide="palette" class="w-6 h-6 text-cyan-400"></i> Appearance & UI
+                    </h3>
+                    
+                    <div class="flex flex-col gap-6">
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">High-Quality Animations</h4>
+                                <p class="text-sm text-slate-400">Enable glowing effects, particles, and smooth transitions. Disable to save battery.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-animations" class="sr-only peer" checked onchange="autoSaveSettings()">
+                                <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer toggle-bg-cyan peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all border border-slate-600 transition-colors"></div>
+                            </label>
+                        </div>
+
+                        <div class="w-full h-px bg-white/5"></div>
+
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Color Theme</h4>
+                                <p class="text-sm text-slate-400">Dream XR is highly optimized for Dark Mode, but you can force Light Mode if preferred.</p>
+                            </div>
+                            <div class="relative w-40">
+                                <select id="set-theme" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400 transition-colors appearance-none cursor-pointer" onchange="autoSaveSettings()">
+                                    <option value="system">System Default</option>
+                                    <option value="dark" selected>Always Dark</option>
+                                    <option value="light">Always Light</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Nova AI Engine -->
+                <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+                        <i data-lucide="sparkles" class="w-6 h-6 text-purple-400"></i> Nova AI Engine
+                    </h3>
+                    
+                    <div class="flex flex-col gap-6">
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">AI Voice Output</h4>
+                                <p class="text-sm text-slate-400">Nova will read text explanations aloud during 3D simulations.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-voice" class="sr-only peer" onchange="autoSaveSettings()">
+                                <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer toggle-bg-purple peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all border border-slate-600 transition-colors"></div>
+                            </label>
+                        </div>
+
+                        <div class="w-full h-px bg-white/5"></div>
+
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Tutor Personality Tone</h4>
+                                <p class="text-sm text-slate-400">Adjust how Nova explains complex topics.</p>
+                            </div>
+                            <div class="relative w-48">
+                                <select id="set-ai-tone" class="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-400 transition-colors appearance-none cursor-pointer" onchange="autoSaveSettings()">
+                                    <option value="genz" selected>Gen-Z (Casual & Fun)</option>
+                                    <option value="academic">Academic (Strict & Formal)</option>
+                                    <option value="child">Child-Friendly (Simple)</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Notifications -->
+                <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
+                        <i data-lucide="bell-ring" class="w-6 h-6 text-green-400"></i> Notifications
+                    </h3>
+                    
+                    <div class="flex flex-col gap-6">
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Product Updates</h4>
+                                <p class="text-sm text-slate-400">Get notified when new 3D models or physics engines are launched.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-notif-updates" class="sr-only peer" checked onchange="autoSaveSettings()">
+                                <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer toggle-bg-cyan peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all border border-slate-600 transition-colors"></div>
+                            </label>
+                        </div>
+
+                        <div class="w-full h-px bg-white/5"></div>
+
+                        <!-- Setting Item -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Weekly Progress Reports</h4>
+                                <p class="text-sm text-slate-400">Receive an email summarizing your lab history and activity.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-notif-emails" class="sr-only peer" onchange="autoSaveSettings()">
+                                <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer toggle-bg-cyan peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all border border-slate-600 transition-colors"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="h-10"></div>
+        </main>
+    </div>
+
+    <!-- UI Scripts -->
+    <script>
+        lucide.createIcons();
+
+        // Custom Toast Function
+        window.showToast = function(title, message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '', textColorClass = '', barColorClass = '';
+            if (type === 'success') { iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>'; textColorClass = 'text-green-400'; barColorClass = 'bg-green-500'; } 
+            else if (type === 'warning' || type === 'error') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-red-400'; barColorClass = 'bg-red-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now() + Math.floor(Math.random() * 1000);
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 5s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            void toast.offsetWidth;
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            setTimeout(() => { if (toast.parentElement) { toast.classList.remove('translate-x-0'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); } }, 5000);
+        };
+    </script>
+
+    <!-- FIREBASE INIT & AUTO-SYNC LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        let currentUser = null;
+        let db = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dream-xr-app';
+
+        // DOM Element Refs
+        const toggleAnimations = document.getElementById('set-animations');
+        const selectTheme = document.getElementById('set-theme');
+        const toggleVoice = document.getElementById('set-voice');
+        const selectTone = document.getElementById('set-ai-tone');
+        const toggleNotifUpdates = document.getElementById('set-notif-updates');
+        const toggleNotifEmails = document.getElementById('set-notif-emails');
+        
+        const syncStatusBox = document.getElementById('sync-status');
+        const syncIcon = document.getElementById('sync-icon');
+        const syncText = document.getElementById('sync-text');
+
+        let isInitialLoad = true; // Prevent saving default states before loading cloud data
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    window.location.href = "login.html";
+                } else {
+                    currentUser = user;
+                    document.getElementById('app-body').classList.remove('hidden');
+                    await loadCloudSettings();
+                }
+            });
+        } else {
+            console.error("Firebase config is missing.");
+        }
+
+        // --- LOAD SETTINGS FROM CLOUD ---
+        async function loadCloudSettings() {
+            if (!currentUser || !db) return;
+
+            try {
+                syncUIStatus('loading');
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'settings');
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // Apply data to UI elements
+                    if (data.animations !== undefined) toggleAnimations.checked = data.animations;
+                    if (data.theme) selectTheme.value = data.theme;
+                    if (data.aiVoice !== undefined) toggleVoice.checked = data.aiVoice;
+                    if (data.aiTone) selectTone.value = data.aiTone;
+                    if (data.notifUpdates !== undefined) toggleNotifUpdates.checked = data.notifUpdates;
+                    if (data.notifEmails !== undefined) toggleNotifEmails.checked = data.notifEmails;
+                }
+                syncUIStatus('success');
+            } catch (error) {
+                console.error("Error loading settings:", error);
+                syncUIStatus('error');
+            } finally {
+                // Allow saves after 500ms so initial DOM Population doesn't trigger a write
+                setTimeout(() => { isInitialLoad = false; }, 500);
+            }
+        }
+
+        // --- DEBOUNCED AUTO-SAVE TO CLOUD ---
+        let saveTimeout;
+        window.autoSaveSettings = function() {
+            if (isInitialLoad || !currentUser || !db) return;
+
+            syncUIStatus('saving');
+
+            // Debounce the save to prevent spamming Firestore if user clicks fast
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'settings');
+                    
+                    const settingsData = {
+                        animations: toggleAnimations.checked,
+                        theme: selectTheme.value,
+                        aiVoice: toggleVoice.checked,
+                        aiTone: selectTone.value,
+                        notifUpdates: toggleNotifUpdates.checked,
+                        notifEmails: toggleNotifEmails.checked,
+                        updatedAt: new Date().toISOString()
+                    };
+
+                    await setDoc(docRef, settingsData, { merge: true });
+                    syncUIStatus('success');
+                } catch (error) {
+                    console.error("Failed to save settings:", error);
+                    syncUIStatus('error');
+                    window.showToast("Cloud Sync Failed", "Unable to save your settings. Check connection.", "error");
+                }
+            }, 800); // Wait 800ms after last change to save
+        };
+
+        // --- SYNC INDICATOR UI LOGIC ---
+        function syncUIStatus(state) {
+            if (state === 'loading') {
+                syncStatusBox.className = "flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 rounded-full text-xs font-bold text-slate-400 uppercase tracking-widest transition-colors duration-300";
+                syncIcon.setAttribute('data-lucide', 'loader-2');
+                syncIcon.className = "w-4 h-4 animate-spin text-slate-400";
+                syncText.innerText = "Loading...";
+            } 
+            else if (state === 'saving') {
+                syncStatusBox.className = "flex items-center gap-2 px-4 py-2 bg-cyan-900/30 border border-cyan-500/30 rounded-full text-xs font-bold text-cyan-400 uppercase tracking-widest transition-colors duration-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]";
+                syncIcon.setAttribute('data-lucide', 'refresh-cw');
+                syncIcon.className = "w-4 h-4 animate-spin text-cyan-400";
+                syncText.innerText = "Syncing...";
+            } 
+            else if (state === 'success') {
+                syncStatusBox.className = "flex items-center gap-2 px-4 py-2 bg-green-900/20 border border-green-500/30 rounded-full text-xs font-bold text-green-400 uppercase tracking-widest transition-colors duration-300";
+                syncIcon.setAttribute('data-lucide', 'cloud-check');
+                syncIcon.className = "w-4 h-4 text-green-400";
+                syncText.innerText = "Up to date";
+            }
+            else if (state === 'error') {
+                syncStatusBox.className = "flex items-center gap-2 px-4 py-2 bg-red-900/20 border border-red-500/30 rounded-full text-xs font-bold text-red-400 uppercase tracking-widest transition-colors duration-300";
+                syncIcon.setAttribute('data-lucide', 'cloud-off');
+                syncIcon.className = "w-4 h-4 text-red-400";
+                syncText.innerText = "Sync Error";
+            }
+            lucide.createIcons();
+        }
+
+    </script>
+</body>
+</html>

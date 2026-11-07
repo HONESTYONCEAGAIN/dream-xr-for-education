@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Dream XR</title>
+    
+    <!-- Load Firebase Configuration -->
+    <script src="secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'pulse-glow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'typing': 'typing 1.2s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite',
+                        'shimmer': 'shimmer 1.5s infinite linear'
+                    },
+                    keyframes: {
+                        typing: {
+                            '0%': { width: '0' },
+                            '100%': { width: '160px' }
+                        },
+                        blink: {
+                            '0%, 100%': { borderColor: 'transparent' },
+                            '50%': { borderColor: '#22d3ee' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        shimmer: {
+                            '100%': { transform: 'translateX(100%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .bg-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0);
+            background-size: 30px 30px;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.5); }
+        
+        /* Gen Z Input Focus Glows */
+        .neon-input:focus-within {
+            box-shadow: inset 0 0 15px rgba(34, 211, 238, 0.1);
+        }
+        .neon-input-purple:focus-within {
+            box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.1);
+        }
+        
+        /* For dark calendar picker */
+        ::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:scale-105 transition-transform">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-cyan-400 animate-typing" style="animation: typing 1s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a href="chemistry.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="flask-conical" class="w-5 h-5 group-hover:text-cyan-400 transition-colors animate-float"></i>
+                <span class="font-semibold text-sm">Chemistry Lab</span>
+            </a>
+            <a href="physics.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a href="bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors animate-pulse"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </a>
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Account</p>
+            <a href="plans.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="credit-card" class="w-5 h-5 group-hover:text-yellow-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Plans & Upgrade</span>
+            </a>
+            <!-- Active Profile Tab -->
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[inset_0_0_15px_rgba(34,211,238,0.1)] transition-all">
+                <i data-lucide="user" class="w-5 h-5"></i>
+                <span class="font-bold text-sm">My Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-cyan-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/30">
+                    <i data-lucide="user" class="w-6 h-6 text-cyan-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">Account Profile</h2>
+                    <p class="text-xs text-slate-400 font-medium">Manage your identity and cloud preferences</p>
+                </div>
+            </div>
+
+            <!-- Right side: Notifications -->
+            <div class="flex items-center gap-6 ml-auto">
+                <a href="notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:animate-[ring_1s_ease-in-out]"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SCROLLABLE CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+            <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- LEFT COLUMN: User Identity Card -->
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden text-center group flex flex-col items-center hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-shadow duration-500">
+                        <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 z-0"></div>
+                        
+                        <!-- Avatar -->
+                        <div class="relative z-10 mb-4 mt-6">
+                            <div id="profile-avatar-container" class="w-28 h-28 rounded-full border-4 border-slate-900 shadow-[0_0_20px_rgba(6,182,212,0.3)] bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-4xl font-bold text-white overflow-hidden transition-transform duration-500 group-hover:scale-110">
+                                <span id="profile-initials">--</span>
+                            </div>
+                            <button class="absolute bottom-0 right-0 w-8 h-8 bg-slate-800 border border-slate-600 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition-colors shadow-lg">
+                                <i data-lucide="camera" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        
+                        <h2 id="display-name-hero" class="text-2xl font-extrabold text-white mb-1 relative z-10">Loading...</h2>
+                        <p id="email-hero" class="text-slate-400 text-sm font-medium mb-4 relative z-10">Loading...</p>
+                        
+                        <div class="flex items-center gap-2 mb-6 relative z-10">
+                            <span id="role-badge" class="px-3 py-1 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full text-xs font-bold uppercase tracking-wider shadow-inner">
+                                Student
+                            </span>
+                            <span class="px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                                <i data-lucide="check-circle-2" class="w-3 h-3"></i> Verified
+                            </span>
+                        </div>
+
+                        <div class="w-full h-px bg-white/10 mb-6 relative z-10"></div>
+
+                        <div class="w-full flex items-center justify-between text-sm relative z-10">
+                            <span class="text-slate-500 font-medium">Member Since</span>
+                            <span id="join-date" class="text-slate-300 font-semibold">Loading...</span>
+                        </div>
+                    </div>
+
+                    <!-- Current Plan Card Mini -->
+                    <div class="bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20 rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                        <div class="absolute top-0 right-0 p-4 opacity-10">
+                            <i data-lucide="crown" class="w-16 h-16 text-yellow-500 transform group-hover:rotate-12 transition-transform"></i>
+                        </div>
+                        <div class="flex items-center gap-2 mb-2 relative z-10">
+                            <div class="p-1.5 bg-yellow-500/20 rounded-md text-yellow-400 shadow-inner"><i data-lucide="zap" class="w-3.5 h-3.5"></i></div>
+                            <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">Current Plan</span>
+                        </div>
+                        <h4 class="text-2xl font-extrabold text-white mb-1 relative z-10">Free Tier</h4>
+                        <a href="plans.html" class="inline-block mt-3 text-yellow-400 text-sm font-bold hover:underline relative z-10 group-hover:text-yellow-300 transition-colors">
+                            Upgrade to Pro <i data-lucide="arrow-right" class="inline w-4 h-4 transform group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Settings Forms -->
+                <div class="lg:col-span-2 flex flex-col gap-6">
+                    
+                    <!-- Basic Profile Section -->
+                    <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl hover:scale-[1.01] transition-transform duration-300 ease-out">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
+                            <i data-lucide="user-cog" class="w-5 h-5 text-cyan-400"></i> Account Identity
+                        </h3>
+                        
+                        <form id="update-profile-form" class="flex flex-col gap-5">
+                            <div>
+                                <label class="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 uppercase tracking-wider mb-2 block">Display Name</label>
+                                <div class="relative neon-input rounded-xl overflow-hidden">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="user" class="w-5 h-5"></i>
+                                    </div>
+                                    <input type="text" id="update-name-input" placeholder="Your Name" class="w-full bg-black/40 border border-white/10 focus:border-cyan-400 rounded-xl pl-12 pr-4 py-3.5 text-white transition-all outline-none font-medium">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Email Address</label>
+                                <div class="relative opacity-60 cursor-not-allowed">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="mail" class="w-5 h-5"></i>
+                                    </div>
+                                    <input type="email" id="update-email-input" readonly class="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white outline-none font-medium cursor-not-allowed">
+                                </div>
+                            </div>
+
+                            <div class="mt-2 flex justify-end">
+                                <button type="submit" id="save-profile-btn" class="px-8 py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group overflow-hidden relative">
+                                    <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover:animate-shimmer"></div>
+                                    <i data-lucide="save" class="w-5 h-5 relative z-10"></i> <span class="relative z-10">Save Name</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Personal Details Section (Saved to Firestore) -->
+                    <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl hover:scale-[1.01] transition-transform duration-300 ease-out">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-5 h-5 text-purple-400"></i> Personal Details
+                            </h3>
+                            <span class="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                                <i data-lucide="cloud" class="w-3 h-3"></i> Cloud Sync
+                            </span>
+                        </div>
+                        
+                        <form id="personal-details-form" class="flex flex-col gap-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 uppercase tracking-wider mb-2 block">Primary Language</label>
+                                    <div class="relative neon-input-purple rounded-xl overflow-hidden">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                            <i data-lucide="languages" class="w-5 h-5"></i>
+                                        </div>
+                                        <input type="text" id="input-language" placeholder="e.g., English, Spanish, Hindi" class="w-full bg-black/40 border border-white/10 focus:border-purple-400 rounded-xl pl-12 pr-4 py-3.5 text-white transition-all outline-none font-medium">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 uppercase tracking-wider mb-2 block">Birthday</label>
+                                    <div class="relative neon-input-purple rounded-xl overflow-hidden">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                            <i data-lucide="calendar" class="w-5 h-5"></i>
+                                        </div>
+                                        <input type="date" id="input-birthday" class="w-full bg-black/40 border border-white/10 focus:border-purple-400 rounded-xl pl-12 pr-4 py-3.5 text-white transition-all outline-none font-medium">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 uppercase tracking-wider mb-2 block">Favorite Subjects</label>
+                                <div class="relative neon-input-purple rounded-xl overflow-hidden">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                                    </div>
+                                    <input type="text" id="input-subjects" placeholder="e.g., Quantum Physics, Organic Chemistry, Astronomy" class="w-full bg-black/40 border border-white/10 focus:border-purple-400 rounded-xl pl-12 pr-4 py-3.5 text-white transition-all outline-none font-medium">
+                                </div>
+                            </div>
+
+                            <div class="mt-2 flex justify-end">
+                                <button type="submit" id="save-details-btn" class="px-8 py-3.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.5)] transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 group">
+                                    <i data-lucide="cloud-upload" class="w-5 h-5 group-hover:-translate-y-1 transition-transform"></i> Sync to Cloud
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Security Section -->
+                    <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-xl hover:scale-[1.01] transition-transform duration-300 ease-out">
+                        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-4">
+                            <i data-lucide="shield" class="w-5 h-5 text-orange-400"></i> Security
+                        </h3>
+                        
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-black/30 p-5 rounded-2xl border border-white/5 shadow-inner">
+                            <div>
+                                <h4 class="font-bold text-white mb-1">Password Authentication</h4>
+                                <p class="text-sm text-slate-400">Receive an email to securely reset your password.</p>
+                            </div>
+                            <button id="reset-password-btn" class="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-xl font-bold transition-all whitespace-nowrap active:scale-95">
+                                Send Reset Link
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Neon Sign Out Button -->
+                    <div class="mt-4">
+                        <button id="danger-signout-btn" class="w-full py-4 border-2 border-red-500/50 hover:border-red-500 bg-red-500/5 hover:bg-red-500/20 text-red-400 hover:text-white rounded-[1.5rem] font-bold shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_25px_rgba(239,68,68,0.3)] transition-all duration-300 flex items-center justify-center gap-2 group active:scale-[0.98]">
+                            <i data-lucide="log-out" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i> Sign Out
+                        </button>
+                    </div>
+
+                </div>
+                
+            </div>
+            <div class="h-10"></div>
+        </main>
+    </div>
+
+    <!-- UI Scripts -->
+    <script>
+        lucide.createIcons();
+
+        // --- GLOBAL TOAST NOTIFICATION FUNCTION WITH ANIMATED PROGRESS BAR ---
+        window.showToast = function(title, message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '';
+            let textColorClass = '';
+            let barColorClass = '';
+            
+            if (type === 'success') {
+                iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>';
+                textColorClass = 'text-green-400';
+                barColorClass = 'bg-green-500';
+            } else if (type === 'info') {
+                iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>';
+                textColorClass = 'text-blue-400';
+                barColorClass = 'bg-blue-500';
+            } else if (type === 'warning' || type === 'error') {
+                iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>';
+                textColorClass = 'text-red-400';
+                barColorClass = 'bg-red-500';
+            }
+
+            // Wrapper needs overflow-hidden and relative so the bar stays at the bottom
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            
+            // Unique ID for the progress bar
+            const barId = 'progress-' + Date.now() + Math.floor(Math.random() * 1000);
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                
+                <!-- Animated Progress Line -->
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 5s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            // Trigger reflow to start the slide-in animation
+            void toast.offsetWidth;
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            // Trigger the progress bar to shrink to 0%
+            const progressBar = document.getElementById(barId);
+            if (progressBar) {
+                setTimeout(() => {
+                    progressBar.style.width = '0%';
+                }, 50); // slight delay ensures the CSS transition fires smoothly
+            }
+
+            // Remove toast after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('translate-x-0');
+                    toast.classList.add('translate-x-full', 'opacity-0');
+                    setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500);
+                }
+            }, 5000);
+        };
+    </script>
+
+    <!-- FIREBASE AUTH, FIRESTORE & LOGIC SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        // Import Firestore for Cloud Storage
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        if (typeof firebaseConfig === 'undefined') {
+            window.showToast("Configuration Error", "Firebase config is missing.", "error");
+        } else {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            
+            // Standardizing app ID for Firestore paths (Crucial Rule)
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'dream-xr-app';
+
+            // DOM Elements
+            const displayNameHero = document.getElementById('display-name-hero');
+            const emailHero = document.getElementById('email-hero');
+            const joinDateDisplay = document.getElementById('join-date');
+            const profileInitials = document.getElementById('profile-initials');
+            const roleBadge = document.getElementById('role-badge');
+            
+            const updateNameInput = document.getElementById('update-name-input');
+            const updateEmailInput = document.getElementById('update-email-input');
+            const updateProfileForm = document.getElementById('update-profile-form');
+            const saveProfileBtn = document.getElementById('save-profile-btn');
+            
+            const personalDetailsForm = document.getElementById('personal-details-form');
+            const saveDetailsBtn = document.getElementById('save-details-btn');
+            const inputLanguage = document.getElementById('input-language');
+            const inputBirthday = document.getElementById('input-birthday');
+            const inputSubjects = document.getElementById('input-subjects');
+            
+            const resetPasswordBtn = document.getElementById('reset-password-btn');
+            const dangerSignoutBtn = document.getElementById('danger-signout-btn');
+
+            // --- LOAD CLOUD FIRESTORE DATA ---
+            async function loadPersonalDetailsFromCloud(user) {
+                if (!user) return;
+                try {
+                    // Strict Firestore Path Rule 1: /artifacts/{appId}/users/{userId}/{collectionName}
+                    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data');
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.language) inputLanguage.value = data.language;
+                        if (data.birthday) inputBirthday.value = data.birthday;
+                        if (data.subjects) inputSubjects.value = data.subjects;
+                    }
+                } catch (error) {
+                    console.error("Error loading cloud profile data:", error);
+                }
+            }
+
+            // Listen to Auth State
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    window.location.href = "login.html";
+                } else {
+                    // Reveal UI
+                    document.getElementById('app-body').classList.remove('hidden');
+
+                    // Extract best possible display name
+                    let displayName = "Guest User"; 
+                    if (user.displayName) {
+                        displayName = user.displayName;
+                    } else if (user.email) {
+                        let emailPrefix = user.email.split('@')[0];
+                        displayName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+                    }
+
+                    // Extract Initials for Avatar
+                    let initials = "GU";
+                    if (displayName && displayName !== "Guest User") {
+                        let names = displayName.trim().split(' ');
+                        if (names.length >= 2) {
+                            initials = (names[0][0] + names[1][0]).toUpperCase();
+                        } else {
+                            initials = names[0].substring(0, 2).toUpperCase();
+                        }
+                    } else if (user.email) {
+                        initials = user.email.substring(0, 2).toUpperCase();
+                    }
+
+                    // Populate Hero Card
+                    displayNameHero.innerText = displayName;
+                    emailHero.innerText = user.email || "No email attached";
+                    profileInitials.innerText = initials;
+
+                    // Populate Form Fields
+                    updateNameInput.value = user.displayName || "";
+                    updateEmailInput.value = user.email || "";
+
+                    // Handle Join Date
+                    if (user.metadata && user.metadata.creationTime) {
+                        const date = new Date(user.metadata.creationTime);
+                        joinDateDisplay.innerText = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    } else {
+                        joinDateDisplay.innerText = "Recently";
+                    }
+
+                    // Handle Role from LocalStorage
+                    const storedRole = localStorage.getItem('userRole') || 'student';
+                    if (storedRole === 'educator') {
+                        roleBadge.innerText = 'Educator';
+                        roleBadge.className = 'px-3 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-bold uppercase tracking-wider shadow-inner';
+                    } else {
+                        roleBadge.innerText = 'Student';
+                        roleBadge.className = 'px-3 py-1 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-full text-xs font-bold uppercase tracking-wider shadow-inner';
+                    }
+
+                    // Load extra fields from Firestore
+                    loadPersonalDetailsFromCloud(user);
+                }
+            });
+
+            // Handle Profile Name Update (Auth)
+            updateProfileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newName = updateNameInput.value.trim();
+                const user = auth.currentUser;
+
+                if (!user) return;
+                
+                if (!newName) {
+                    window.showToast("Error", "Display name cannot be empty.", "error");
+                    return;
+                }
+
+                const originalText = saveProfileBtn.innerHTML;
+                saveProfileBtn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin relative z-10"></i> <span class="relative z-10">Saving...</span>';
+                saveProfileBtn.disabled = true;
+                lucide.createIcons();
+
+                try {
+                    await updateProfile(user, { displayName: newName });
+                    
+                    displayNameHero.innerText = newName;
+                    
+                    let names = newName.trim().split(' ');
+                    let initials = names.length >= 2 ? (names[0][0] + names[1][0]).toUpperCase() : names[0].substring(0, 2).toUpperCase();
+                    profileInitials.innerText = initials;
+
+                    window.showToast("Profile Updated", "Your display name has been updated successfully.", "success");
+                } catch (error) {
+                    window.showToast("Update Failed", error.message, "error");
+                } finally {
+                    saveProfileBtn.innerHTML = originalText;
+                    saveProfileBtn.disabled = false;
+                    lucide.createIcons();
+                }
+            });
+
+            // --- SAVE TO FIRESTORE CLOUD ---
+            personalDetailsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const user = auth.currentUser;
+                if (!user) return; // Strict Rule 3
+
+                const originalText = saveDetailsBtn.innerHTML;
+                saveDetailsBtn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Syncing...';
+                saveDetailsBtn.disabled = true;
+                lucide.createIcons();
+
+                try {
+                    // Strict Firestore Path Rule 1: /artifacts/{appId}/users/{userId}/{collectionName}
+                    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data');
+                    
+                    await setDoc(docRef, {
+                        language: inputLanguage.value.trim(),
+                        birthday: inputBirthday.value,
+                        subjects: inputSubjects.value.trim(),
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+
+                    window.showToast("Cloud Sync Complete", "Your personal details have been securely saved to Dream XR cloud.", "success");
+                } catch (error) {
+                    console.error("Firestore error:", error);
+                    window.showToast("Sync Failed", "Could not save to cloud. Ensure Firestore rules are published.", "error");
+                } finally {
+                    saveDetailsBtn.innerHTML = originalText;
+                    saveDetailsBtn.disabled = false;
+                    lucide.createIcons();
+                }
+            });
+
+            // Handle Password Reset
+            resetPasswordBtn.addEventListener('click', async () => {
+                const user = auth.currentUser;
+                if (!user || !user.email) {
+                    window.showToast("Error", "Cannot send reset link. No email associated with this account.", "error");
+                    return;
+                }
+
+                const originalText = resetPasswordBtn.innerHTML;
+                resetPasswordBtn.innerHTML = 'Sending...';
+                resetPasswordBtn.disabled = true;
+
+                try {
+                    await sendPasswordResetEmail(auth, user.email);
+                    window.showToast("Email Sent", `A password reset link was sent to ${user.email}`, "success");
+                } catch (error) {
+                    window.showToast("Failed to Send", error.message, "error");
+                } finally {
+                    resetPasswordBtn.innerHTML = originalText;
+                    resetPasswordBtn.disabled = false;
+                }
+            });
+
+            // Handle Sign Out
+            dangerSignoutBtn.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Error signing out:", error);
+                    window.showToast("Error", "Failed to sign out.", "error");
+                }
+            });
+        }
+    </script>
+</body>
+</html>

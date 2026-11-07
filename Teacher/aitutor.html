@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Educator Copilot - Dream XR</title>
+    
+    <!-- Load Configuration for API Keys -->
+    <script src="../secrets/config.js"></script>
+    <script src="../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration with Premium Animations -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'blink': 'blink 1s step-end infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'pop-in': 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'glow-pulse': 'glowPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-soft': 'bounceSoft 2s infinite',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                        'slide-right': 'slideRight 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(20px) scale(0.98)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+                        popIn: { '0%': { opacity: '0', transform: 'scale(0.8)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#818cf8' } },
+                        glowPulse: { '0%, 100%': { opacity: 1, transform: 'scale(1)', boxShadow: '0 0 15px rgba(99,102,241,0.5)' }, '50%': { opacity: 0.8, transform: 'scale(1.05)', boxShadow: '0 0 25px rgba(99,102,241,0.8)' } },
+                        bounceSoft: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-5px)' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideRight: { '0%': { opacity: '0', transform: 'translateX(-20px)' }, '100%': { opacity: '1', transform: 'translateX(0)' } },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Premium Background Pattern */
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 30px 30px; }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
+
+        /* Dropup Specific Scrollbar */
+        .dropup-scrollbar::-webkit-scrollbar { width: 4px; }
+        .dropup-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
+
+        /* Clean, Compact Markdown Formatting Styles for AI Output */
+        .ai-message-content { font-size: 0.875rem; }
+        .ai-message-content h1 { font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+        .ai-message-content h2 { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+        .ai-message-content h3 { font-size: 0.9rem; font-weight: 700; color: #cbd5e1; margin-top: 0.5rem; margin-bottom: 0.15rem; }
+        .ai-message-content strong { color: #818cf8; font-weight: 700; }
+        .ai-message-content em { color: #a5b4fc; font-style: italic; }
+        .ai-message-content p { margin-bottom: 0.5rem; line-height: 1.5; }
+        
+        /* Custom Lists */
+        .ai-message-content ul { list-style-type: none; margin-left: 0; margin-bottom: 0.5rem; color: #cbd5e1; padding-left: 0; }
+        .ai-message-content ul li { position: relative; padding-left: 1rem; margin-bottom: 0.25rem; }
+        .ai-message-content ul li::before { content: "•"; position: absolute; left: 0; color: #818cf8; font-weight: bold; }
+        .ai-message-content ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; color: #cbd5e1; }
+        .ai-message-content li { margin-bottom: 0.2rem; }
+        
+        /* Code Blocks */
+        .ai-message-content code { background-color: rgba(15, 23, 42, 0.6); color: #34d399; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.8em; }
+        .ai-message-content pre { background-color: rgba(15, 23, 42, 0.8); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; border: 1px solid rgba(255,255,255,0.1); }
+        .ai-message-content pre code { background-color: transparent; color: #e2e8f0; padding: 0; }
+
+        /* Roll-out Toolkit Animation Classes */
+        .toolkit-tray { 
+            max-width: 0; 
+            opacity: 0; 
+            overflow: hidden; 
+            transition: max-width 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; 
+            white-space: nowrap; 
+        }
+        .toolkit-tray.open { 
+            max-width: 1000px; 
+            opacity: 1; 
+            overflow: visible; 
+        }
+        
+        /* Toggle Button Rotation */
+        .toggle-btn { transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s; }
+        .toggle-btn.open { 
+            transform: rotate(135deg); 
+            background-color: rgba(239, 68, 68, 0.2); 
+            border-color: rgba(239, 68, 68, 0.3); 
+            color: #f87171; 
+            box-shadow: 0 0 15px rgba(239,68,68,0.4);
+        }
+
+        /* JSON DB Viewer Styling */
+        .json-key { color: #818cf8; font-weight: bold; }
+        .json-string { color: #34d399; }
+        .json-boolean { color: #fbbf24; }
+        .json-null { color: #f87171; }
+        .word-break { word-break: break-all; }
+
+        /* Mic Pulse */
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        .mic-active-ring::before {
+            content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #ef4444; animation: ripple 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+
+        /* Custom Drop Zone Highlight */
+        .drag-active {
+            border-color: #818cf8 !important;
+            background-color: rgba(99, 102, 241, 0.1) !important;
+            box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.2) !important;
+        }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-indigo-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/20 rounded-full blur-[120px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-700/15 rounded-full blur-[120px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- ========================================== -->
+    <!-- HARDCODED SIDEBAR (FULLY FEATURED)         -->
+    <!-- ========================================== -->
+    <aside class="w-72 h-full bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.4)] transition-all duration-300">
+        
+        <!-- Logo Area - FIXED TYPING GLITCH -->
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-xl shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block whitespace-nowrap">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-1">Dream XR</h1>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3 custom-scrollbar overflow-x-hidden">
+            
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 whitespace-nowrap">Educator Console</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Dashboard</span>
+            </a>
+            
+            <a href="NCERT/ncert-library.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="library" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Intelligence Center</span>
+            </a>
+            
+            <a href="Classrooms/class10.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="users" class="w-5 h-5 shrink-0 group-hover:text-blue-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">My Classrooms</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">AI & Resources</p>
+            
+            <!-- ACTIVE TAB: Nova Assistant -->
+            <a href="aitutor.html" class="relative flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 shadow-[inset_0_0_20px_rgba(99,102,241,0.15)] transition-all group overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent animate-shimmer pointer-events-none"></div>
+                <i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:-translate-y-1 transition-all relative z-10"></i>
+                <span class="font-bold text-sm whitespace-nowrap relative z-10 flex-1">Nova Assistant</span>
+                <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shrink-0 relative z-10"></span>
+            </a>
+            
+            <a href="assessments/assessments.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="file-check-2" class="w-5 h-5 shrink-0 group-hover:text-emerald-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Assessments</span>
+            </a>
+
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="activity" class="w-5 h-5 shrink-0 group-hover:text-orange-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Live Lab Monitor</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">Account</p>
+            
+            <a href="Profile/profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="user" class="w-5 h-5 shrink-0 group-hover:text-indigo-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Educator Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="settings" class="w-5 h-5 shrink-0 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ========================================== -->
+    <!-- MAIN CONTENT AREA                          -->
+    <!-- ========================================== -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            
+            <div class="flex items-center gap-4 opacity-0 animate-uncover">
+                <div class="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                    <i data-lucide="bot" class="w-6 h-6 text-indigo-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white tracking-wide flex items-center gap-2">
+                        Nova Copilot
+                        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2.5 py-0.5 rounded-md text-[10px] uppercase font-black tracking-widest">Educator</span>
+                    </h2>
+                    <p class="text-sm text-slate-400 font-medium">High-Speed Neural Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 lg:gap-6 ml-auto opacity-0 animate-uncover" style="animation-delay: 0.1s;">
+                
+                <!-- VIEW DATABASE BUTTON (Transparent Local Cache) -->
+                <button onclick="toggleDatabaseModal()" class="hidden md:flex px-5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 rounded-full font-bold text-xs uppercase tracking-widest items-center gap-2 transition-all shadow-inner group">
+                    <i data-lucide="database" class="w-4 h-4 group-hover:text-indigo-400 transition-colors"></i> View Cache
+                </button>
+
+                <!-- HOW TO USE BUTTON (Animated) -->
+                <button onclick="toggleHowToUse()" class="px-5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-full font-bold text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(52,211,153,0.2)] flex items-center gap-2 transition-all hover:scale-105 animate-bounce-soft">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i> Instructions
+                </button>
+
+                <!-- DYNAMIC PROMPT LIMIT BAR -->
+                <div class="hidden sm:flex items-center gap-3 bg-slate-900 border border-white/10 px-4 py-2.5 rounded-full shadow-inner cursor-help" title="AI Prompts Remaining this session">
+                    <div class="relative w-16 h-1.5 bg-slate-800 rounded-full overflow-visible flex items-center" id="prompt-bar-container">
+                        <div id="prompt-progress-bar" class="h-full bg-slate-500 w-[0%] transition-all duration-300 rounded-full relative">
+                            <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2.5 h-2.5 bg-slate-400 rounded-full shadow-sm" id="prompt-progress-dot"></div>
+                        </div>
+                    </div>
+                    <span id="prompt-count-text" class="text-xs font-bold text-slate-300 tracking-wider">Loading...</span>
+                </div>
+
+                <a href="./notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:animate-pulse"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                </a>
+            </div>
+        </header>
+
+        <!-- CHAT INTERFACE -->
+        <main class="flex-1 flex flex-col relative max-w-6xl mx-auto w-full p-4 lg:p-6 min-h-0">
+            
+            <!-- Chat History Area: Removed pb-48 -->
+            <div id="chat-container" class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6 p-2 lg:p-4 scroll-smooth min-h-0">
+                
+                <!-- Welcome Banner / Initial System Message with EMOJIS! -->
+                <div class="flex items-start gap-4 opacity-0 animate-slide-up">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border border-indigo-500/30 flex items-center justify-center shrink-0 mt-1 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <div class="bg-gradient-to-br from-slate-900/90 to-indigo-900/10 border border-white/10 backdrop-blur-md rounded-2xl rounded-tl-sm p-6 max-w-[85%] shadow-xl relative overflow-hidden group">
+                        <!-- Subtle Background Glow -->
+                        <div class="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        
+                        <div class="text-sm text-slate-200 leading-relaxed ai-message-content relative z-10">
+                            <h2 class="text-lg font-extrabold text-indigo-300 mb-3 flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-5 h-5"></i> System Online. Greetings, Professor! 👋
+                            </h2>
+                            <p>I am <strong>Nova 🤖</strong>. I am your personal AI assistant. Tell me what to do!</p>
+                            
+                            <div class="bg-black/30 border border-white/5 p-4 rounded-xl mt-4 mb-4">
+                                <h3 class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">Capabilities 🚀</h3>
+                                <ul class="list-none space-y-2 m-0 p-0 text-sm">
+                                    <li class="flex items-start gap-2"><i data-lucide="zap" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i> <span>Click the <strong>'+' button</strong> below to reveal my Quick Toolkit 🛠️.</span></li>
+                                    <li class="flex items-start gap-2"><i data-lucide="database" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i> <span>Zero-latency responses via <strong>Autonomous Local Cache 🧠</strong>.</span></li>
+                                    <li class="flex items-start gap-2"><i data-lucide="mic" class="w-4 h-4 text-pink-400 shrink-0 mt-0.5"></i> <span>Voice dictation enabled 🎙️.</span></li>
+                                </ul>
+                            </div>
+                            
+                            <!-- QUICK CHAT SUGGESTIONS -->
+                            <div class="flex flex-wrap gap-2 pt-4 border-t border-white/10">
+                                <button onclick="fillAndSend('Hello Nova, how are you?')" class="px-4 py-2 bg-slate-800/80 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 border border-white/10 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                                    <i data-lucide="hand" class="w-3.5 h-3.5"></i> How are you?
+                                </button>
+                                <button onclick="fillAndSend('Give me a quick 5-minute activity for Class 10 Light chapter.')" class="px-4 py-2 bg-slate-800/80 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-white/10 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 active:scale-95">
+                                    <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Quick Activity Idea
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ========================================== -->
+            <!-- THE INPUT ZONE (WITH ROLL-OUT TOOLKIT)     -->
+            <!-- ========================================== -->
+            <div id="drop-zone" class="absolute bottom-6 left-4 right-4 lg:left-6 lg:right-6 bg-slate-900/85 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.6)] transition-all duration-300 z-30">
+                
+                <!-- 1. ROLL-OUT TOOLKIT ROW -->
+                <div class="relative w-full mb-3 flex items-center px-2 pt-1 h-10">
+                    
+                    <!-- The Trigger Button (+) -->
+                    <button id="toolkit-toggle" onclick="toggleToolkit()" class="toggle-btn w-10 h-10 shrink-0 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.5)] z-20 relative outline-none focus:outline-none">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+
+                    <!-- The Hidden Tray that rolls out -->
+                    <div id="toolkit-tray" class="toolkit-tray flex items-center gap-3 pl-4 overflow-x-auto custom-scrollbar h-full absolute left-10">
+                        <button onclick="openQaMenu('lesson_plan')" class="h-10 px-4 bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 active:scale-95 shadow-inner">
+                            <i data-lucide="layout-list" class="w-4 h-4"></i> Lesson Plan
+                        </button>
+                        <button onclick="openQaMenu('mcq')" class="h-10 px-4 bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 active:scale-95 shadow-inner">
+                            <i data-lucide="list-checks" class="w-4 h-4"></i> Generate MCQs
+                        </button>
+                        <button onclick="openQaMenu('rubric')" class="h-10 px-4 bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 active:scale-95 shadow-inner">
+                            <i data-lucide="file-check-2" class="w-4 h-4"></i> Grading Rubric
+                        </button>
+                    </div>
+
+                    <!-- THE MASSIVE DROPUP MENU FOR TOPIC SELECTION -->
+                    <div id="quick-action-dropup" class="absolute bottom-[120%] left-0 lg:left-12 mb-2 w-[320px] sm:w-[380px] bg-slate-900/95 backdrop-blur-2xl border border-indigo-500/40 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] hidden flex-col overflow-hidden z-50 transform origin-bottom-left transition-all">
+                        
+                        <!-- Dropup Header -->
+                        <div class="p-4 border-b border-white/10 bg-gradient-to-r from-indigo-900/50 to-transparent flex justify-between items-center shrink-0">
+                            <div>
+                                <span class="text-sm font-extrabold text-white flex items-center gap-2" id="dropup-title">
+                                    <i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i> Select Topic
+                                </span>
+                                <p class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">For <span id="dropup-action-label" class="text-indigo-300">Action</span></p>
+                            </div>
+                            <button onclick="closeQaMenu()" class="text-slate-400 hover:text-white p-1.5 bg-white/5 rounded-lg transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                        
+                        <!-- Dropup Scrollable Content -->
+                        <div class="max-h-[350px] overflow-y-auto dropup-scrollbar p-3 flex flex-col gap-1.5">
+                            
+                            <!-- Custom Context Button -->
+                            <button onclick="triggerCustomUpload()" class="text-left px-4 py-3 text-sm text-purple-300 font-bold hover:bg-purple-500/20 rounded-xl transition-all border border-purple-500/30 bg-purple-500/10 mb-4 flex items-center gap-3 shadow-inner group">
+                                <div class="p-1.5 bg-purple-500/20 rounded-lg group-hover:scale-110 transition-transform"><i data-lucide="upload-cloud" class="w-4 h-4"></i></div>
+                                Upload Custom PDF / Context
+                            </button>
+                            
+                            <!-- Class 10 Block -->
+                            <div class="flex items-center gap-2 px-2 mt-2 mb-1">
+                                <div class="h-px bg-white/10 flex-1"></div>
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900 px-2 rounded-full border border-white/5">Class 10 Science</span>
+                                <div class="h-px bg-white/10 flex-1"></div>
+                            </div>
+                            <button onclick="executeQuickAction('Class 10 Ch 1: Chemical Reactions')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 1: Chemical Reactions</button>
+                            <button onclick="executeQuickAction('Class 10 Ch 2: Acids, Bases & Salts')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 2: Acids, Bases & Salts</button>
+                            <button onclick="executeQuickAction('Class 10 Ch 3: Metals & Non-Metals')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 3: Metals & Non-Metals</button>
+                            <button onclick="executeQuickAction('Class 10 Ch 4: Carbon & Compounds')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 4: Carbon & Compounds</button>
+                            <button onclick="executeQuickAction('Class 10 Ch 5: Life Processes')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 5: Life Processes</button>
+                            <button onclick="executeQuickAction('Class 10 Ch 9: Light - Reflection')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 9: Light - Reflection</button>
+                            
+                            <!-- Class 9 Block -->
+                            <div class="flex items-center gap-2 px-2 mt-4 mb-1">
+                                <div class="h-px bg-white/10 flex-1"></div>
+                                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900 px-2 rounded-full border border-white/5">Class 9 Science</span>
+                                <div class="h-px bg-white/10 flex-1"></div>
+                            </div>
+                            <button onclick="executeQuickAction('Class 9 Ch 1: Matter in Our Surroundings')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 1: Matter in Our Surroundings</button>
+                            <button onclick="executeQuickAction('Class 9 Ch 5: The Fundamental Unit of Life')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 5: The Fundamental Unit of Life</button>
+                            <button onclick="executeQuickAction('Class 9 Ch 8: Motion')" class="text-left px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors">Ch 8: Motion</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. ATTACHMENT PREVIEW ROW -->
+                <div id="attachment-preview" class="hidden flex-wrap gap-2 px-4 pt-2 pb-3 border-t border-white/5 mt-1 mb-1">
+                    <!-- Javascript injects pills here -->
+                </div>
+
+                <!-- 3. INPUT FIELD ROW -->
+                <div class="flex items-end gap-2 lg:gap-3 relative mt-1 px-1 lg:px-2">
+                    
+                    <!-- Attachment Button & Mini Menu -->
+                    <div class="relative shrink-0 mb-1" id="attachment-dropdown-container">
+                        <div id="attachment-menu" class="absolute bottom-[130%] left-0 w-52 bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl hidden flex-col z-50 overflow-hidden">
+                            <button onclick="document.getElementById('file-upload-image').click(); toggleAttachmentMenu();" class="flex items-center gap-3 px-4 py-4 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-colors border-b border-white/5">
+                                <div class="p-1.5 bg-emerald-500/20 rounded-md"><i data-lucide="image" class="w-4 h-4 text-emerald-400"></i></div> Upload Photo
+                            </button>
+                            <button onclick="document.getElementById('file-upload-pdf').click(); toggleAttachmentMenu();" class="flex items-center gap-3 px-4 py-4 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
+                                <div class="p-1.5 bg-blue-500/20 rounded-md"><i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i></div> Upload PDF
+                            </button>
+                        </div>
+                        
+                        <!-- Hidden Inputs -->
+                        <input type="file" id="file-upload-image" class="hidden" multiple accept="image/*" onchange="handleFileSelect(event)">
+                        <input type="file" id="file-upload-pdf" class="hidden" multiple accept=".pdf" onchange="handleFileSelect(event)">
+                        
+                        <button onclick="toggleAttachmentMenu()" class="p-3 bg-white/5 text-slate-300 hover:text-indigo-400 hover:bg-white/10 rounded-xl transition-all border border-transparent shadow-sm">
+                            <i data-lucide="paperclip" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Text Area: Changed oninput to also call updateChatPadding -->
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Instruct Nova or drop files here..." 
+                        class="flex-1 bg-black/50 border border-white/10 focus:border-indigo-500/50 focus:bg-black/80 text-white rounded-2xl resize-none outline-none py-3.5 px-4 text-sm font-medium transition-all shadow-inner custom-scrollbar max-h-32" 
+                        oninput="this.style.height=''; this.style.height=this.scrollHeight+'px'; updateChatPadding();" 
+                        onkeydown="handleEnter(event)"
+                    ></textarea>
+                    
+                    <!-- Right Actions (Mic & Send) -->
+                    <div class="flex items-center gap-1 lg:gap-2 shrink-0 mb-1">
+                        
+                        <!-- Microphone -->
+                        <button id="mic-btn" onclick="toggleSpeechRecognition()" class="p-3 bg-white/5 text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-xl transition-all border border-transparent shadow-sm relative">
+                            <i data-lucide="mic" class="w-5 h-5 relative z-10" id="mic-icon"></i>
+                        </button>
+
+                        <!-- Send -->
+                        <button id="send-btn" onclick="sendMessage()" class="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 flex items-center justify-center">
+                            <i data-lucide="send" class="w-5 h-5 ml-0.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALS & OVERLAYS                          -->
+    <!-- ========================================== -->
+
+    <!-- HOW TO USE MODAL -->
+    <div id="how-to-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-[#0b1120] border border-emerald-500/30 w-full max-w-2xl rounded-[2rem] shadow-[0_0_50px_rgba(52,211,153,0.2)] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="how-to-content">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center bg-emerald-500/10">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/30"><i data-lucide="lightbulb" class="w-6 h-6 animate-pulse"></i></div>
+                    <h3 class="text-xl font-bold text-white">How to use Nova</h3>
+                </div>
+                <button onclick="toggleHowToUse()" class="text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-8 text-slate-300 space-y-6">
+                <div class="flex gap-4 items-start bg-black/30 p-4 rounded-2xl border border-white/5">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/30 font-black text-lg">1</div>
+                    <div><h4 class="text-white font-bold text-lg mb-1">The Roll-out Toolkit</h4><p class="text-sm text-slate-400 leading-relaxed">Click the glowing <strong class="text-indigo-400">+</strong> button next to the chat bar to reveal quick actions. From there, select a chapter to instantly generate MCQs or Lesson Plans.</p></div>
+                </div>
+                <div class="flex gap-4 items-start bg-black/30 p-4 rounded-2xl border border-white/5">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30 font-black text-lg">2</div>
+                    <div><h4 class="text-white font-bold text-lg mb-1">Autonomous Neural Cache</h4><p class="text-sm text-slate-400 leading-relaxed">Nova automatically saves your prompts in the browser. Next time you ask the exact same question, it answers <strong class="text-emerald-400">instantly</strong> with zero latency and zero API tokens used.</p></div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-white/10 bg-black/40 flex justify-end">
+                <button onclick="toggleHowToUse()" class="px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_15px_rgba(52,211,153,0.3)] active:scale-95">Understood</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON DATABASE VIEWER MODAL -->
+    <div id="db-modal" class="fixed inset-0 z-[250] hidden items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-[#050810] border border-indigo-500/50 w-full max-w-4xl rounded-[2rem] shadow-[0_0_80px_rgba(99,102,241,0.3)] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300 h-[85vh]" id="db-content">
+            
+            <div class="p-6 border-b border-indigo-500/30 flex justify-between items-center bg-indigo-900/20 shrink-0 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none -mt-32 -mr-32"></div>
+                <div class="flex items-center gap-4 relative z-10">
+                    <div class="p-3 bg-indigo-500/20 rounded-xl text-indigo-400 border border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.4)]"><i data-lucide="database" class="w-6 h-6"></i></div>
+                    <div>
+                        <h3 class="text-2xl font-extrabold text-white tracking-tight">Autonomous Neural Cache</h3>
+                        <p class="text-xs text-indigo-300 font-bold uppercase tracking-widest mt-1">Zero-Latency Local Storage</p>
+                    </div>
+                </div>
+                <button onclick="toggleDatabaseModal()" class="text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full relative z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <!-- Terminal like JSON window -->
+            <div class="p-6 flex-1 overflow-y-auto bg-black relative custom-scrollbar">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="ml-2 text-xs font-mono text-slate-500">nova_cache.json</span>
+                </div>
+                <pre id="db-json-view" class="text-sm font-mono text-slate-300 whitespace-pre-wrap word-break leading-loose"></pre>
+            </div>
+            
+            <div class="p-6 border-t border-white/10 bg-slate-900/80 flex justify-between shrink-0">
+                <button onclick="clearDatabase()" class="px-6 py-3 bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 font-bold rounded-xl transition-all flex items-center gap-2 active:scale-95"><i data-lucide="trash-2" class="w-4 h-4"></i> Flush Cache</button>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportDatabase()" class="px-6 py-3 bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 font-bold rounded-xl transition-all flex items-center gap-2 active:scale-95"><i data-lucide="download" class="w-4 h-4"></i> Export JSON</button>
+                    <button onclick="toggleDatabaseModal()" class="px-8 py-3 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95">Close Terminal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC                           -->
+    <!-- ========================================== -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const chatContainer = document.getElementById('chat-container');
+        const userInputBox = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const dropZone = document.getElementById('drop-zone');
+        const attachmentPreview = document.getElementById('attachment-preview');
+        
+        // --- 0. DYNAMIC CHAT PADDING FIX ---
+        // Ensuring the chat area always stays above the dynamically resizing input box.
+        function updateChatPadding() {
+            chatContainer.style.paddingBottom = (dropZone.offsetHeight + 24) + "px";
+        }
+        
+        window.addEventListener("load", updateChatPadding);
+        window.addEventListener("resize", updateChatPadding);
+
+        // --- 1. AUTONOMOUS LOCAL DATABASE LOGIC ---
+        const DB_KEY = 'dream_xr_nova_cache';
+        
+        function getDatabase() {
+            const data = localStorage.getItem(DB_KEY);
+            return data ? JSON.parse(data) : {};
+        }
+
+        function saveToDatabase(prompt, response) {
+            const db = getDatabase();
+            // Store with timestamp for future pruning if needed
+            db[prompt.toLowerCase().trim()] = {
+                response: response,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        }
+
+        function checkDatabase(prompt) {
+            const db = getDatabase();
+            const entry = db[prompt.toLowerCase().trim()];
+            return entry ? entry.response : null;
+        }
+
+        function clearDatabase() {
+            if(confirm("WARNING: Flushing the neural cache will remove all zero-latency answers. Are you sure?")) {
+                localStorage.removeItem(DB_KEY);
+                renderJsonToDOM({}); // Clear view
+                alert("Cache Flushed Successfully.");
+            }
+        }
+
+        function exportDatabase() {
+            const db = getDatabase();
+            if (Object.keys(db).length === 0) {
+                alert("The database is currently empty. Nothing to export.");
+                return;
+            }
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 4));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href",     dataStr);
+            downloadAnchorNode.setAttribute("download", "nova_cache_export.json");
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // Custom JSON Formatter for syntax highlighting
+        function renderJsonToDOM(jsonObj) {
+            const jsonView = document.getElementById('db-json-view');
+            if (Object.keys(jsonObj).length === 0) {
+                jsonView.innerHTML = '<span class="text-slate-500 italic">// The cache is currently empty. Start asking questions!</span>';
+                return;
+            }
+
+            let jsonString = JSON.stringify(jsonObj, null, 4);
+            
+            // Basic regex syntax highlighting
+            jsonString = jsonString.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            jsonString = jsonString.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'text-cyan-400'; // number
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'text-indigo-400 font-bold'; // key
+                    } else {
+                        cls = 'text-emerald-400'; // string
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'text-yellow-400'; // boolean
+                } else if (/null/.test(match)) {
+                    cls = 'text-red-400'; // null
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+            jsonView.innerHTML = jsonString;
+        }
+
+        function toggleDatabaseModal() {
+            const modal = document.getElementById('db-modal');
+            const content = document.getElementById('db-content');
+            
+            if (modal.classList.contains('hidden')) {
+                // Populate data before showing
+                renderJsonToDOM(getDatabase());
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => { 
+                    modal.classList.remove('opacity-0'); 
+                    content.classList.remove('scale-95'); 
+                    content.classList.add('scale-100'); 
+                }, 10);
+            } else {
+                modal.classList.add('opacity-0'); 
+                content.classList.remove('scale-100'); 
+                content.classList.add('scale-95');
+                setTimeout(() => { 
+                    modal.classList.add('hidden'); 
+                    modal.classList.remove('flex'); 
+                }, 300);
+            }
+        }
+
+        // --- 2. MODALS & UI TOGGLES ---
+        function toggleHowToUse() {
+            const modal = document.getElementById('how-to-modal');
+            const content = document.getElementById('how-to-content');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
+            } else {
+                modal.classList.add('opacity-0'); content.classList.remove('scale-100'); content.classList.add('scale-95');
+                setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
+            }
+        }
+
+        // Roll-out Toolkit Logic
+        let toolkitOpen = false;
+        function toggleToolkit() {
+            const tray = document.getElementById('toolkit-tray');
+            const btn = document.getElementById('toolkit-toggle');
+            toolkitOpen = !toolkitOpen;
+            if(toolkitOpen) { 
+                tray.classList.add('open'); 
+                btn.classList.add('open'); 
+            } else { 
+                tray.classList.remove('open'); 
+                btn.classList.remove('open'); 
+                closeQaMenu(); // Also close dropup if open
+            }
+            // Update padding whenever UI changes
+            setTimeout(updateChatPadding, 350); 
+        }
+
+        // Dropup Logic
+        let currentQaAction = '';
+        const qaDropup = document.getElementById('quick-action-dropup');
+        
+        window.openQaMenu = function(actionType) {
+            currentQaAction = actionType;
+            let label = "";
+            if(actionType === 'lesson_plan') label = "Lesson Plan";
+            if(actionType === 'mcq') label = "MCQ Generation";
+            if(actionType === 'rubric') label = "Grading Rubric";
+            
+            document.getElementById('dropup-action-label').innerText = label;
+            qaDropup.classList.remove('hidden'); 
+            qaDropup.classList.add('flex');
+            setTimeout(updateChatPadding, 50);
+        };
+
+        window.closeQaMenu = function() { 
+            qaDropup.classList.add('hidden'); 
+            qaDropup.classList.remove('flex'); 
+            setTimeout(updateChatPadding, 50);
+        };
+
+        window.triggerCustomUpload = function() {
+            closeQaMenu();
+            toggleToolkit(); // Close tray too
+            const inputVal = document.getElementById('user-input');
+            let actionText = "analyze this";
+            if (currentQaAction === 'mcq') actionText = "generate 5 MCQs based on this";
+            if (currentQaAction === 'lesson_plan') actionText = "create a lesson plan from this";
+            if (currentQaAction === 'rubric') actionText = "create a grading rubric for this";
+            
+            inputVal.value = `Please ${actionText} attached document.`;
+            document.getElementById('file-upload-pdf').click();
+        };
+
+        window.executeQuickAction = function(chapterStr) {
+            closeQaMenu();
+            toggleToolkit(); // Close tray too
+            
+            let prompt = '';
+            // STRICT PROMPTING to save tokens
+            if (currentQaAction === 'mcq') prompt = `Generate 5 multiple choice questions with correct answers for ${chapterStr}. Output ONLY the questions and answers. No intro text. Keep it compact.`;
+            else if (currentQaAction === 'lesson_plan') prompt = `Create a highly concise, bulleted 40-min lesson plan for ${chapterStr}. Output ONLY the outline.`;
+            else if (currentQaAction === 'rubric') prompt = `Draft a concise grading rubric for a student lab experiment based on ${chapterStr}. Output ONLY the rubric table/bullets.`;
+            
+            fillAndSend(prompt);
+        };
+
+        window.fillAndSend = function(text) {
+            userInputBox.value = text;
+            sendMessage();
+        };
+
+        // --- 3. SPEECH RECOGNITION (MIC) LOGIC ---
+        let recognition = null;
+        let isRecording = false;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function() {
+                isRecording = true;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.add('mic-active-ring', 'text-red-400');
+                micBtn.classList.remove('text-slate-300');
+                userInputBox.placeholder = "Listening...";
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    const currentVal = userInputBox.value;
+                    userInputBox.value = currentVal ? currentVal + " " + finalTranscript : finalTranscript;
+                } else if (interimTranscript) {
+                    userInputBox.value = interimTranscript;
+                }
+                userInputBox.style.height = 'auto';
+                userInputBox.style.height = userInputBox.scrollHeight + 'px';
+                updateChatPadding();
+            };
+
+            recognition.onerror = function(event) { console.error("Mic error", event.error); stopRecordingUI(); };
+            recognition.onend = function() { stopRecordingUI(); };
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) { alert("Voice Input not supported in this browser."); return; }
+            if (isRecording) { recognition.stop(); stopRecordingUI(); } 
+            else { userInputBox.value = ''; recognition.start(); }
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            const micBtn = document.getElementById('mic-btn');
+            micBtn.classList.remove('mic-active-ring', 'text-red-400');
+            micBtn.classList.add('text-slate-300');
+            userInputBox.placeholder = "Instruct Nova or drop files here...";
+            if (userInputBox.value.trim().length > 0) setTimeout(sendMessage, 500); 
+        }
+
+        // --- 4. ATTACHMENTS & DRAG/DROP ---
+        let attachedFilesData = [];
+        
+        function toggleAttachmentMenu() {
+            const menu = document.getElementById('attachment-menu');
+            menu.classList.toggle('hidden'); menu.classList.toggle('flex');
+        }
+        
+        // Close attachment menu if clicked outside
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('attachment-dropdown-container');
+            const menu = document.getElementById('attachment-menu');
+            if (container && !container.contains(e.target) && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden'); menu.classList.remove('flex');
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false); });
+        ['dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false); });
+
+        dropZone.addEventListener('drop', (e) => { handleFiles(e.dataTransfer.files); });
+        function handleFileSelect(e) { handleFiles(e.target.files); }
+
+        function handleFiles(files) {
+            [...files].forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        attachedFilesData.push({ name: file.name, type: 'image', mimeType: file.type, data: e.target.result.split(',')[1] });
+                        renderAttachmentPreview();
+                    };
+                    reader.readAsDataURL(file);
+                } 
+                else if (file.type === 'application/pdf') {
+                    attachedFilesData.push({ name: file.name, type: 'pdf', status: 'mock' });
+                    renderAttachmentPreview();
+                } else {
+                    alert("Only Images and PDFs supported.");
+                }
+            });
+        }
+
+        function renderAttachmentPreview() {
+            attachmentPreview.innerHTML = '';
+            if (attachedFilesData.length > 0) { attachmentPreview.classList.remove('hidden'); attachmentPreview.classList.add('flex'); } 
+            else { attachmentPreview.classList.add('hidden'); attachmentPreview.classList.remove('flex'); }
+
+            attachedFilesData.forEach((file, index) => {
+                const icon = file.type === 'image' ? 'image' : 'file-text';
+                const color = file.type === 'image' ? 'text-emerald-400' : 'text-blue-400';
+                attachmentPreview.innerHTML += `
+                    <div class="flex items-center gap-2 bg-slate-800 border border-white/20 rounded-lg pl-3 pr-2 py-1.5 animate-pop-in shadow-sm">
+                        <i data-lucide="${icon}" class="w-4 h-4 ${color}"></i>
+                        <span class="text-xs text-slate-200 truncate max-w-[120px] font-bold">${file.name}</span>
+                        <button onclick="removeAttachment(${index})" class="text-slate-500 hover:text-red-400 transition-colors ml-1"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                    </div>`;
+            });
+            lucide.createIcons();
+            updateChatPadding();
+        }
+
+        window.removeAttachment = function(index) { attachedFilesData.splice(index, 1); renderAttachmentPreview(); };
+
+        // --- 5. CORE CHAT LOGIC ---
+        // Let's store chat history to provide detailed, contextual, emoji-rich answers.
+        let chatHistory = [];
+        let promptsUsed = 0; let maxPrompts = 15; let isUnlimited = false;
+
+        function updatePromptCounter() {
+            promptsUsed++;
+            if (!isUnlimited) document.getElementById('prompt-count-text').innerText = `${promptsUsed} / ${maxPrompts}`;
+            const percentage = (promptsUsed / maxPrompts) * 100;
+            document.getElementById('prompt-progress-bar').style.width = `${percentage}%`;
+        }
+
+        function handleEnter(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+        // Markdown formatter (Clean logic)
+        function parseFormatting(text) {
+            let p = text;
+            p = p.replace(/^### (.*$)/gim, '<h3 class="text-indigo-300 mt-3 mb-1 font-bold text-base">$1</h3>');
+            p = p.replace(/^## (.*$)/gim, '<h2 class="text-white mt-4 mb-2 font-bold text-lg">$1</h2>');
+            p = p.replace(/^# (.*$)/gim, '<h1 class="text-white mt-4 mb-2 font-extrabold text-xl">$1</h1>');
+            p = p.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>');
+            p = p.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            p = p.replace(/`([^`]+)`/g, '<code>$1</code>');
+            p = p.replace(/^[\*-] (.*$)/gim, '<li>$1</li>');
+            p = p.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+            // Wrap loose list items
+            p = p.replace(/(<li>.*<\/li>)/gim, '<ul class="my-2">$1</ul>');
+            p = p.replace(/<\/ul>\s*<ul class="my-2">/gim, ''); // Merge adjacent lists
+            p = p.replace(/\n/g, '<br>');
+            return p;
+        }
+
+        async function sendMessage() {
+            const message = userInputBox.value.trim();
+            if (!message && attachedFilesData.length === 0) return;
+
+            // 1. UI Updates (Append user message)
+            let attachmentHtml = '';
+            if (attachedFilesData.length > 0) {
+                attachmentHtml = `<div class="flex gap-2 mb-2 flex-wrap justify-end">`;
+                attachedFilesData.forEach(f => {
+                    const icon = f.type === 'image' ? 'image' : 'file-text';
+                    attachmentHtml += `<span class="text-[10px] bg-black/40 border border-white/20 px-2 py-1 rounded-md text-cyan-300 flex items-center gap-1 font-bold"><i data-lucide="${icon}" class="w-3 h-3"></i> ${f.name}</span>`;
+                });
+                attachmentHtml += `</div>`;
+            }
+
+            appendUserMessage(message, attachmentHtml);
+            
+            const payloadFiles = [...attachedFilesData]; 
+            userInputBox.value = ''; 
+            userInputBox.style.height = 'auto'; 
+            attachedFilesData = []; 
+            renderAttachmentPreview();
+            updateChatPadding();
+            
+            // Add user message to history
+            chatHistory.push({
+                role: "user",
+                parts: [{ text: message }]
+            });
+
+            // 2. CHECK AUTONOMOUS CACHE FIRST!
+            const cachedResponse = checkDatabase(message);
+            if (cachedResponse) {
+                console.log("Returned from Cache!");
+                appendAIMessage(cachedResponse, true); // true = isCached
+                scrollToBottom();
+                return;
+            }
+
+            // 3. API CALL
+            updatePromptCounter();
+            const typingIndicatorId = showTypingIndicator();
+            scrollToBottom();
+
+            try {
+                // We use the full chat history for context.
+                const response = await fetchGeminiAPIWithHistory(chatHistory, payloadFiles);
+                document.getElementById(typingIndicatorId).remove();
+                
+                // Add model response to history
+                chatHistory.push({
+                    role: "model",
+                    parts: [{ text: response }]
+                });
+
+                saveToDatabase(message, response);
+                appendAIMessage(response);
+                
+            } catch (error) {
+                document.getElementById(typingIndicatorId).remove();
+                appendAIMessage("Error: " + error.message);
+                // Remove the failed user message from history so we can try again
+                chatHistory.pop();
+            }
+            scrollToBottom(); lucide.createIcons();
+        }
+
+        function appendUserMessage(text, attachmentHtml = '') {
+            // FIX: Ensure container wraps cleanly with user avatar on the extreme right without overlapping
+            const textHtml = text ? `<div class="text-sm text-white font-medium break-words">${text}</div>` : '';
+            const html = `
+                <div class="flex items-start justify-end gap-4 animate-slide-right w-full">
+                    <div class="bg-indigo-600/20 border border-indigo-500/30 backdrop-blur-md rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-lg">
+                        ${attachmentHtml}${textHtml}
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border-2 border-indigo-500 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                        <i data-lucide="user" class="w-5 h-5 text-indigo-300"></i>
+                    </div>
+                </div>`;
+            chatContainer.insertAdjacentHTML('beforeend', html);
+        }
+
+        function appendAIMessage(rawText, isCached = false) {
+            const formattedText = parseFormatting(rawText);
+            
+            // REMOVED THE CACHE BADGE LOGIC to keep it normal looking
+            const html = `
+                <div class="flex items-start gap-4 animate-fade-in w-full">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl rounded-tl-sm p-5 max-w-[85%] shadow-xl">
+                        <div class="text-slate-300 leading-relaxed ai-message-content">${formattedText}</div>
+                    </div>
+                </div>`;
+            chatContainer.insertAdjacentHTML('beforeend', html);
+        }
+
+        function showTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const html = `
+                <div id="${id}" class="flex items-start gap-4 animate-fade-in w-full">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl rounded-tl-sm p-5 flex items-center gap-2 h-14 shadow-lg">
+                        <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>`;
+            chatContainer.insertAdjacentHTML('beforeend', html);
+            return id;
+        }
+
+        function scrollToBottom() { setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 50); }
+
+        async function fetchGeminiAPIWithHistory(history, files) {
+            if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY) throw new Error("API Key Missing");
+            
+            // If there are files, we append them to the LAST user message in the history payload
+            let finalHistory = JSON.parse(JSON.stringify(history)); // deep copy
+
+            if (files.length > 0) {
+                let pdfMocked = false;
+                let lastMessageParts = finalHistory[finalHistory.length - 1].parts;
+                
+                files.forEach(f => {
+                    if (f.type === 'image') {
+                        lastMessageParts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
+                    } else if (f.type === 'pdf') {
+                        pdfMocked = true;
+                    }
+                });
+
+                if (pdfMocked) return "PDF received. Since I am operating in a client-side web environment, direct deep parsing of PDFs is limited. I will infer based on file name or you can upload screenshots/text snippets!";
+            }
+
+            const payload = {
+                contents: finalHistory,
+                systemInstruction: { parts: [{ text: "You are Nova, an AI Assistant for Teachers. Provide detailed, helpful, and insightful answers. Use plenty of emojis to make the conversation engaging and friendly! Provide explanations, but keep the formatting clean with markdown." }] }
+            };
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+            const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await response.json();
+            
+            if (data.error) throw new Error(data.error.message); 
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // Initialize
+        window.onload = () => { 
+            lucide.createIcons(); 
+        };
+
+    </script>
+    
+    <!-- FIREBASE INIT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) window.location.href = "../login.html"; 
+                else document.getElementById('app-body').classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>

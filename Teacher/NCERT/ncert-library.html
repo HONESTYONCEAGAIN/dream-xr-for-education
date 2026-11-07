@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCERT Intelligence Center - Dream XR Educator</title>
+    
+    <!-- Configs (API Keys aur Firebase settings ke liye) -->
+    <script src="../secrets/config.js"></script>
+    <script src="../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'typing': 'typing 1.5s steps(20, end) forwards',
+                        'blink': 'blink 1s step-end infinite'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-12px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(40px) scale(0.95)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+                        popIn: { '0%': { opacity: '0', transform: 'scale(0.8)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                        typing: { '0%': { width: '0' }, '100%': { width: '100%' } },
+                        blink: { '0%, 100%': { borderColor: 'transparent' }, '50%': { borderColor: '#818cf8' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Background Pattern */
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 30px 30px; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(52, 211, 153, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.6); }
+
+        /* Card Hover Effects */
+        .library-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .library-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px -10px rgba(52, 211, 153, 0.2); border-color: rgba(52, 211, 153, 0.4); }
+
+        .active-class-tab { background-color: rgba(52, 211, 153, 0.2) !important; color: #34d399 !important; border-color: rgba(52, 211, 153, 0.4) !important; font-weight: 800 !important; box-shadow: 0 0 15px rgba(52, 211, 153, 0.2); }
+        .active-subject-tab { background-color: rgba(255, 255, 255, 0.1) !important; color: #ffffff !important; border-color: rgba(255, 255, 255, 0.2) !important; }
+
+        .nova-checkbox { appearance: none; width: 1.25rem; height: 1.25rem; border: 2px solid rgba(168, 85, 247, 0.5); border-radius: 0.25rem; cursor: pointer; transition: all 0.2s; position: relative; }
+        .nova-checkbox:checked { background-color: #a855f7; border-color: #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.5); }
+        .nova-checkbox:checked::after { content: '✓'; position: absolute; color: white; font-size: 0.8rem; font-weight: bold; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+        /* Smart Viewer Tools Active State */
+        .tool-active { background-color: rgba(52, 211, 153, 0.2) !important; color: #34d399 !important; border-color: rgba(52, 211, 153, 0.5) !important; box-shadow: inset 0 0 10px rgba(52, 211, 153, 0.2); }
+        
+        /* Canvas Whiteboard overlay styles */
+        #whiteboard-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none; /* Default pan mode me off rahega */
+            touch-action: none; /* Mobile scrolling rokne ke liye drawing ke waqt */
+        }
+        
+        .color-swatch { transition: transform 0.1s; }
+        .color-swatch.active { transform: scale(1.3); border: 2px solid white; }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-emerald-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-24 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-700/20 rounded-full blur-[150px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[150px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- HARDCODED SIDEBAR -->
+    <aside class="w-72 h-full bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.4)] transition-all duration-300">
+        
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-xl shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div class="inline-block overflow-hidden whitespace-nowrap border-r-2 border-emerald-400 animate-typing" style="animation: typing 1.5s steps(20, end) forwards, blink 1s step-end infinite;">
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 pb-1">Dream XR</h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3 custom-scrollbar overflow-x-hidden">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 whitespace-nowrap">Educator Console</p>
+            
+            <a href="../index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0 group-hover:scale-110 group-hover:text-indigo-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Dashboard</span>
+            </a>
+            
+            <!-- ACTIVE TAB -->
+            <a href="ncert-library.html" class="relative flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[inset_0_0_20px_rgba(52,211,153,0.15)] transition-all group overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent animate-shimmer pointer-events-none"></div>
+                <i data-lucide="library" class="w-5 h-5 shrink-0 group-hover:-translate-y-1 transition-all relative z-10"></i>
+                <span class="font-bold text-sm whitespace-nowrap relative z-10">Intelligence Center</span>
+            </a>
+            
+            <a href="../Classrooms/class10.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="users" class="w-5 h-5 shrink-0 group-hover:scale-110 group-hover:text-blue-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">My Classrooms</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">AI & Resources</p>
+            
+            <a href="../aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:rotate-12 group-hover:text-green-400 transition-all"></i>
+                    <span class="font-semibold text-sm whitespace-nowrap">Nova Assistant</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+            </a>
+            
+            <a href="../assessments/assessments.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="file-check-2" class="w-5 h-5 shrink-0 group-hover:translate-x-1 group-hover:text-emerald-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Assessments</span>
+            </a>
+
+            <a href="../labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="activity" class="w-5 h-5 shrink-0 group-hover:text-orange-400 transition-colors"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Live Lab Monitor</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 whitespace-nowrap">Account</p>
+            
+            <a href="../Profile/profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="user" class="w-5 h-5 shrink-0 group-hover:scale-110 group-hover:text-indigo-400 transition-all"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Educator Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="../settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group overflow-hidden">
+                <i data-lucide="settings" class="w-5 h-5 shrink-0 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm whitespace-nowrap">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20 transition-all">
+            <div class="hidden lg:flex items-center bg-black/40 border border-white/10 rounded-full px-5 py-2.5 w-[400px] focus-within:border-emerald-400/50 focus-within:bg-black/60 transition-all shadow-inner group">
+                <i data-lucide="search" class="w-5 h-5 text-slate-500 group-focus-within:text-emerald-400 transition-colors mr-3"></i>
+                <input type="text" id="global-search" placeholder="Search chapters, topics, experiments, or MCQs..." class="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-slate-600 font-medium">
+                <div class="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] text-slate-400 ml-2 font-mono">Ctrl+K</div>
+            </div>
+
+            <div class="flex items-center gap-6 ml-auto">
+                <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                    <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></div>
+                    <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Library Sync Active</span>
+                </div>
+
+                <a href="../notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group active:scale-90">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:rotate-12 transition-transform"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></span>
+                </a>
+
+                <a href="../Profile/profile.html" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-indigo-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:scale-110 transition-transform ml-2 group active:scale-90">
+                    <i data-lucide="user" class="w-5 h-5 text-indigo-300 group-hover:text-white transition-colors"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SCROLLABLE CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar relative">
+            <div class="max-w-7xl mx-auto flex flex-col min-h-full">
+                
+                <header class="mb-10 opacity-0 animate-uncover" style="animation-delay: 0.1s;">
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-emerald-500/20 to-indigo-500/20 border border-emerald-500/30 rounded-full mb-5 shadow-[0_0_20px_rgba(52,211,153,0.15)] hover:scale-105 transition-transform cursor-default">
+                        <i data-lucide="brain-circuit" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-100">Dream XR Knowledge Hub</span>
+                    </div>
+
+                    <h2 class="text-5xl font-extrabold mb-4 text-white tracking-tight">NCERT <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-indigo-400 drop-shadow-md">Intelligence Center</span> 🧠</h2>
+                    <p class="text-slate-400 text-lg max-w-3xl leading-relaxed">
+                        Not just a library. An AI-powered Knowledge Hub. Access PDFs, XR Labs, and generate 1-click Lesson Plans, PPT Outlines, and MCQs instantly via Teacher Superpower Mode 🔥.
+                    </p>
+                </header>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 opacity-0 animate-uncover" style="animation-delay: 0.2s;">
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:scale-105 transition-transform">
+                        <div><p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Total PDFs</p><h4 class="text-2xl font-bold text-white">48+</h4></div>
+                        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20"><i data-lucide="book-copy" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:scale-105 transition-transform">
+                        <div><p class="text-xs text-slate-500 font-bold uppercase mb-0.5">XR Models</p><h4 class="text-2xl font-bold text-white">125+</h4></div>
+                        <div class="w-12 h-12 bg-cyan-500/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-cyan-500/20"><i data-lucide="box" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:scale-105 transition-transform">
+                        <div><p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Nova AI</p><h4 class="text-2xl font-bold text-white">Online</h4></div>
+                        <div class="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-2xl flex items-center justify-center border border-purple-500/20"><i data-lucide="bot" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/5 p-5 rounded-3xl flex items-center justify-between hover:scale-105 transition-transform">
+                        <div><p class="text-xs text-slate-500 font-bold uppercase mb-0.5">Curriculum</p><h4 class="text-2xl font-bold text-white">CBSE</h4></div>
+                        <div class="w-12 h-12 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center border border-orange-500/20"><i data-lucide="award" class="w-6 h-6"></i></div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 mb-8 opacity-0 animate-uncover z-20 relative" style="animation-delay: 0.3s;">
+                    <!-- Class Filter -->
+                    <div class="flex items-center gap-2 bg-slate-900/80 p-2 rounded-2xl border border-white/10 backdrop-blur-xl shadow-lg w-full xl:w-auto overflow-x-auto custom-scrollbar">
+                        <button onclick="showComingSoon('Class 6')" class="class-tab px-4 py-2.5 rounded-xl text-slate-600 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95 flex items-center gap-2 bg-slate-900/50 cursor-not-allowed"><i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Class 6</button>
+                        <button onclick="showComingSoon('Class 7')" class="class-tab px-4 py-2.5 rounded-xl text-slate-600 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95 flex items-center gap-2 bg-slate-900/50 cursor-not-allowed"><i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Class 7</button>
+                        <button onclick="showComingSoon('Class 8')" class="class-tab px-4 py-2.5 rounded-xl text-slate-600 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95 flex items-center gap-2 bg-slate-900/50 cursor-not-allowed"><i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Class 8</button>
+                        
+                        <button onclick="changeClass('9')" id="btn-class-9" class="class-tab px-5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95">Class 9</button>
+                        <button onclick="changeClass('10')" id="btn-class-10" class="class-tab active-class-tab px-5 py-2.5 rounded-xl font-bold text-sm transition-all border whitespace-nowrap active:scale-95">Class 10</button>
+                        
+                        <button onclick="showComingSoon('Class 11')" class="class-tab px-4 py-2.5 rounded-xl text-slate-600 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95 flex items-center gap-2 bg-slate-900/50 cursor-not-allowed"><i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Class 11</button>
+                        <button onclick="showComingSoon('Class 12')" class="class-tab px-4 py-2.5 rounded-xl text-slate-600 font-semibold text-sm transition-all border border-transparent whitespace-nowrap active:scale-95 flex items-center gap-2 bg-slate-900/50 cursor-not-allowed"><i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Class 12</button>
+                    </div>
+
+                    <!-- Subject Filter -->
+                    <div class="flex items-center gap-2 w-full xl:w-auto overflow-x-auto custom-scrollbar pb-2 xl:pb-0">
+                        <button onclick="changeSubject('All')" id="btn-sub-All" class="subject-tab active-subject-tab px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-bold text-slate-300 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
+                            <i data-lucide="layers" class="w-4 h-4"></i> All Science
+                        </button>
+                        <button onclick="changeSubject('Physics')" id="btn-sub-Physics" class="subject-tab px-4 py-2 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 rounded-xl text-sm font-semibold text-slate-400 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
+                            <i data-lucide="sun" class="w-4 h-4 text-orange-400"></i> Physics
+                        </button>
+                        <button onclick="changeSubject('Chemistry')" id="btn-sub-Chemistry" class="subject-tab px-4 py-2 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 rounded-xl text-sm font-semibold text-slate-400 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
+                            <i data-lucide="flask-conical" class="w-4 h-4 text-cyan-400"></i> Chemistry
+                        </button>
+                        <button onclick="changeSubject('Biology')" id="btn-sub-Biology" class="subject-tab px-4 py-2 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 rounded-xl text-sm font-semibold text-slate-400 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
+                            <i data-lucide="dna" class="w-4 h-4 text-purple-400"></i> Biology
+                        </button>
+                        
+                        <div class="h-6 w-px bg-white/10 mx-2"></div>
+                        
+                        <!-- LOCKED SUBJECTS -->
+                        <button onclick="showComingSoon('Maths')" class="px-4 py-2 bg-slate-900/50 border border-transparent rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 whitespace-nowrap cursor-not-allowed">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Maths
+                        </button>
+                        <button onclick="showComingSoon('English')" class="px-4 py-2 bg-slate-900/50 border border-transparent rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 whitespace-nowrap cursor-not-allowed">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> English
+                        </button>
+                        <button onclick="showComingSoon('Social')" class="px-4 py-2 bg-slate-900/50 border border-transparent rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 whitespace-nowrap cursor-not-allowed">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 opacity-50"></i> Social Sc.
+                        </button>
+                    </div>
+                </div>
+
+                <div id="library-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-20">
+                    <!-- Cards will be injected here via JavaScript -->
+                </div>
+                
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-20 opacity-50">
+                    <i data-lucide="search-x" class="w-16 h-16 text-slate-500 mb-4"></i>
+                    <h3 class="text-2xl font-bold text-white mb-2">No Chapters Found</h3>
+                    <p class="text-slate-400">Try adjusting your filters or search query.</p>
+                </div>
+
+                <footer class="mt-auto pt-12 mb-6 text-center text-slate-600 text-xs font-bold uppercase tracking-[0.2em] opacity-0 animate-uncover" style="animation-delay: 0.5s;">
+                    &copy; Copyright made by Monarch AI Sol. 2026
+                </footer>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- 🤖 TEACHER SUPERPOWER MODAL -->
+    <div id="superpower-modal" class="fixed inset-0 z-[150] hidden items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-gradient-to-br from-[#0b1120] to-slate-900 border border-purple-500/30 w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-[0_0_50px_rgba(168,85,247,0.2)] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="superpower-content">
+            
+            <div class="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border-b border-white/10 p-6 flex justify-between items-center shrink-0 relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center border border-purple-500/30 text-purple-400">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white" id="modal-chapter-title">Chapter Title</h3>
+                        <p class="text-xs text-purple-300 font-bold uppercase tracking-widest mt-1">Teacher Superpower Mode 🔥</p>
+                    </div>
+                </div>
+                <button onclick="closeSuperpowerModal()" class="text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-all active:scale-90">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 flex flex-col lg:flex-row min-h-0 relative z-10">
+                <div class="w-full lg:w-1/3 border-r border-white/10 p-6 flex flex-col gap-4 overflow-y-auto custom-scrollbar bg-black/20">
+                    <p class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Select Outputs to Generate:</p>
+                    
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="lesson_plan" checked>
+                        <span class="text-sm font-semibold text-slate-200">📝 Lesson Plan</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="ppt_outline" checked>
+                        <span class="text-sm font-semibold text-slate-200">📊 PPT Outline</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="classroom_activity" checked>
+                        <span class="text-sm font-semibold text-slate-200">👥 Classroom Activity</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="mcqs" checked>
+                        <span class="text-sm font-semibold text-slate-200">📋 Generate 5 MCQs</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="homework">
+                        <span class="text-sm font-semibold text-slate-200">🏠 Homework & HOTS</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-colors hover:border-purple-500/30">
+                        <input type="checkbox" class="nova-checkbox" value="xr_experiment">
+                        <span class="text-sm font-semibold text-slate-200">🧪 XR Experiment Setup</span>
+                    </label>
+
+                    <button onclick="runNovaGeneration()" id="nova-generate-btn" class="mt-4 w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2 group overflow-hidden relative">
+                        <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-shimmer pointer-events-none"></div>
+                        <i data-lucide="zap" class="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform"></i> <span class="relative z-10">1-Click Generate</span>
+                    </button>
+                </div>
+
+                <div class="w-full lg:w-2/3 p-6 flex flex-col bg-black/40 relative overflow-hidden">
+                    <div id="nova-output-area" class="flex-1 overflow-y-auto custom-scrollbar relative z-10 pr-2">
+                        <div class="h-full flex flex-col items-center justify-center opacity-40 text-center" id="nova-placeholder">
+                            <div class="p-4 bg-white/5 border border-white/10 rounded-full mb-4">
+                                <i data-lucide="sparkles" class="w-12 h-12 text-purple-400"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-white mb-2">Nova AI Ready</h4>
+                            <p class="max-w-xs mx-auto text-sm text-slate-400">Select your required outputs on the left and hit generate. Nova will analyze the NCERT PDF context instantly.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📄 SMART PDF VIEWER MODAL (Whiteboard Mode) -->
+    <div id="smart-pdf-modal" class="fixed inset-0 z-[200] hidden flex-col bg-slate-950/95 backdrop-blur-3xl opacity-0 transition-opacity duration-300">
+        <!-- Toolbar -->
+        <div class="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-slate-900/50 shrink-0 z-20 relative">
+            <div class="flex items-center gap-4">
+                <button onclick="closeSmartPDF()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <i data-lucide="x" class="w-4 h-4 text-slate-300"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-widest rounded">Smart Reader</span>
+                    <h3 id="pdf-modal-title" class="font-bold text-white text-lg ml-2">Chapter Title</h3>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="pdf-live-class-btn" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-bold transition-colors flex items-center gap-2">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> Open in Live Class
+                </button>
+                <button id="pdf-lab-btn" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                    <i data-lucide="flask-conical" class="w-4 h-4 fill-current"></i> Open in Lab
+                </button>
+                <!-- NOVA AI POP OUT BUTTON -->
+                <button onclick="toggleNovaSidebar()" class="w-10 h-10 ml-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 flex items-center justify-center transition-colors border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]" title="Ask Nova">
+                    <i data-lucide="bot" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="flex-1 flex overflow-hidden relative">
+            <!-- Annotation Tools Side -->
+            <div class="w-16 border-r border-white/10 bg-slate-900/30 flex flex-col items-center py-4 gap-3 shrink-0 z-20 relative">
+                <!-- Modes -->
+                <button onclick="setCanvasMode('pan')" id="tool-pan" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 transition-colors tool-active" title="Select / Pan"><i data-lucide="mouse-pointer-2" class="w-5 h-5"></i></button>
+                <button onclick="setCanvasMode('draw')" id="tool-draw" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/20 flex items-center justify-center text-slate-300 transition-colors" title="Pen Tool"><i data-lucide="pen-tool" class="w-5 h-5"></i></button>
+                <button onclick="setCanvasMode('highlight')" id="tool-highlight" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-yellow-500/20 flex items-center justify-center text-slate-300 hover:text-yellow-400 transition-colors" title="Highlighter"><i data-lucide="highlighter" class="w-5 h-5"></i></button>
+                <button onclick="setCanvasMode('erase')" id="tool-erase" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors" title="Eraser"><i data-lucide="eraser" class="w-5 h-5"></i></button>
+                
+                <div class="w-6 h-px bg-white/10 my-1"></div>
+                
+                <!-- Colors -->
+                <button onclick="setColor('#ef4444', this)" class="color-swatch w-6 h-6 rounded-full bg-red-500 active"></button>
+                <button onclick="setColor('#3b82f6', this)" class="color-swatch w-6 h-6 rounded-full bg-blue-500"></button>
+                <button onclick="setColor('#22c55e', this)" class="color-swatch w-6 h-6 rounded-full bg-green-500"></button>
+                <button onclick="setColor('#eab308', this)" class="color-swatch w-6 h-6 rounded-full bg-yellow-500"></button>
+                <button onclick="setColor('#000000', this)" class="color-swatch w-6 h-6 rounded-full bg-black border border-white/20"></button>
+                
+                <div class="w-6 h-px bg-white/10 my-1"></div>
+                
+                <!-- Thickness -->
+                <input type="range" id="brush-size" min="1" max="15" value="4" class="w-10 transform -rotate-90 mt-6 accent-emerald-500 cursor-pointer" title="Brush Size">
+                
+                <div class="w-6 h-px bg-white/10 my-6"></div>
+                
+                <!-- Clear -->
+                <button onclick="clearCanvas()" class="w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 border border-red-500/30 transition-colors mt-auto" title="Clear All Drawings"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+            
+            <!-- Viewer Container (iFrame + Canvas Overlay) -->
+            <div class="flex-1 relative bg-white overflow-hidden" id="viewer-container">
+                <!-- Loader -->
+                <div id="pdf-loading-overlay" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center z-0">
+                    <i data-lucide="loader-2" class="w-10 h-10 text-emerald-400 animate-spin mb-3"></i>
+                    <p class="text-sm font-bold tracking-widest text-emerald-400 uppercase">Loading Official NCERT PDF...</p>
+                </div>
+                
+                <!-- Native Browser PDF Viewer iFrame -->
+                <iframe id="pdf-iframe" class="absolute inset-0 w-full h-full border-none z-0" src=""></iframe>
+                
+                <!-- Transparent Canvas Overlay for Drawing -->
+                <!-- Touch-action none is crucial for mobile drawing -->
+                <canvas id="whiteboard-canvas" class="absolute inset-0 w-full h-full z-10" style="touch-action: none;"></canvas>
+            </div>
+
+            <!-- NOVA AI SLIDE-OUT PANEL -->
+            <div id="nova-sidebar" class="w-80 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 flex flex-col absolute right-0 top-0 bottom-0 z-30 transform translate-x-full transition-transform duration-300 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
+                <div class="p-4 border-b border-white/10 flex items-center justify-between bg-black/40 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+                        <h4 class="font-bold text-white">Ask Nova</h4>
+                    </div>
+                    <button onclick="toggleNovaSidebar()" class="text-slate-400 hover:text-white p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3" id="nova-mini-chat">
+                    <div class="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl rounded-tl-sm text-sm text-slate-300">
+                        Hey! Ask me anything about this chapter while you read. I already know what chapter is open!
+                    </div>
+                </div>
+                <div class="p-3 border-t border-white/10 bg-black/40 flex gap-2 shrink-0">
+                    <input type="text" id="nova-mini-input" placeholder="Type question..." class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-400" onkeypress="if(event.key==='Enter') sendMiniNovaMessage()">
+                    <button onclick="sendMiniNovaMessage()" class="bg-indigo-500 hover:bg-indigo-400 text-white p-2 rounded-lg transition-colors"><i data-lucide="send" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 📺 VIDEO RESOURCES MODAL -->
+    <div id="video-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-[#0b1120] border border-white/10 w-full max-w-3xl rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="video-modal-content">
+            
+            <div class="p-6 border-b border-white/10 flex justify-between items-center relative z-10 bg-black/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center border border-red-500/30 text-red-400">
+                        <i data-lucide="play-square" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white" id="video-modal-title">Video Resources</h3>
+                        <p class="text-xs text-slate-400 font-medium mt-0.5">Curated visual learning materials</p>
+                    </div>
+                </div>
+                <button onclick="closeVideoModal()" class="text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-all active:scale-90">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 bg-black/40 flex flex-col gap-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                
+                <div class="group relative bg-slate-900/80 border border-white/5 rounded-2xl p-3 flex gap-4 hover:bg-slate-800 transition-colors cursor-pointer">
+                    <div class="w-40 h-24 bg-slate-800 rounded-xl overflow-hidden relative shrink-0">
+                        <img src="https://placehold.co/320x180/1e293b/a855f7?text=3D+Animation" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="thumbnail">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-transparent transition-colors">
+                            <i data-lucide="play" class="w-8 h-8 text-white drop-shadow-md"></i>
+                        </div>
+                        <span class="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">12:45</span>
+                    </div>
+                    <div class="flex-1 py-1">
+                        <h4 class="text-white font-bold mb-1 group-hover:text-cyan-400 transition-colors">3D Concept Animation</h4>
+                        <p class="text-xs text-slate-400 mb-2 line-clamp-2">High quality 3D visual breakdown of the chapter concepts specifically designed for XR curriculum.</p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">Recommended</span>
+                    </div>
+                </div>
+
+                <div class="group relative bg-slate-900/80 border border-white/5 rounded-2xl p-3 flex gap-4 hover:bg-slate-800 transition-colors cursor-pointer">
+                    <div class="w-40 h-24 bg-slate-800 rounded-xl overflow-hidden relative shrink-0">
+                        <img src="https://placehold.co/320x180/1e293b/3b82f6?text=One+Shot" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="thumbnail">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-transparent transition-colors">
+                            <i data-lucide="play" class="w-8 h-8 text-white drop-shadow-md"></i>
+                        </div>
+                        <span class="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">45:20</span>
+                    </div>
+                    <div class="flex-1 py-1">
+                        <h4 class="text-white font-bold mb-1 group-hover:text-blue-400 transition-colors">One Shot Revision</h4>
+                        <p class="text-xs text-slate-400 mb-2 line-clamp-2">Complete chapter revision in one go covering all NCERT topics and important definitions.</p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">Revision</span>
+                    </div>
+                </div>
+
+                <div class="group relative bg-slate-900/80 border border-white/5 rounded-2xl p-3 flex gap-4 hover:bg-slate-800 transition-colors cursor-pointer">
+                    <div class="w-40 h-24 bg-slate-800 rounded-xl overflow-hidden relative shrink-0">
+                        <img src="https://placehold.co/320x180/1e293b/f59e0b?text=NCERT+Q%26A" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="thumbnail">
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-transparent transition-colors">
+                            <i data-lucide="play" class="w-8 h-8 text-white drop-shadow-md"></i>
+                        </div>
+                        <span class="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] text-white font-bold">28:15</span>
+                    </div>
+                    <div class="flex-1 py-1">
+                        <h4 class="text-white font-bold mb-1 group-hover:text-orange-400 transition-colors">Important NCERT Questions</h4>
+                        <p class="text-xs text-slate-400 mb-2 line-clamp-2">Step-by-step solutions to the most frequently asked board exam questions from this chapter.</p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">Exam Prep</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Staggered load for cards
+            renderGrid();
+        });
+
+        // Toast functionality
+        window.showToast = function(title, message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>', textColorClass = 'text-blue-400', barColorClass = 'bg-blue-500';
+            if (type === 'warning') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-red-400'; barColorClass = 'bg-red-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now();
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 3s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            void toast.offsetWidth;
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            setTimeout(() => { if (toast.parentElement) { toast.classList.remove('translate-x-0'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); } }, 3000);
+        };
+
+        window.showComingSoon = function(subject) {
+            showToast(`${subject} Locked`, `The ${subject} curriculum is currently under development for Dream XR. Only Science is unlocked right now.`, 'warning');
+        }
+
+        // --- KHATARNAK MASSIVE JSON DATABASE ---
+        // Class 9 & 10 Fully Populated with LOCAL PATHS for Class 10
+        const ncertDatabase = [
+            // ================= CLASS 10 (LOCAL PDFS) =================
+            {
+                id: "c10_1", class: "10", subject: "Chemistry", chapter: "Chapter 1",
+                title: "Chemical Reactions and Equations",
+                desc: "Learn about combination, decomposition, displacement, and redox reactions with real-world examples.",
+                icon: "flask-conical", color: "cyan", pdf: "Books/Class_10/jesc101.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c10_2", class: "10", subject: "Chemistry", chapter: "Chapter 2",
+                title: "Acids, Bases and Salts",
+                desc: "Understand pH, neutralization, and the chemical properties of acids and bases.",
+                icon: "beaker", color: "cyan", pdf: "Books/Class_10/jesc102.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c10_3", class: "10", subject: "Chemistry", chapter: "Chapter 3",
+                title: "Metals and Non-metals",
+                desc: "Explore reactivity series, ionic bonding, metallurgy, and corrosion.",
+                icon: "anvil", color: "cyan", pdf: "Books/Class_10/jesc103.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c10_4", class: "10", subject: "Chemistry", chapter: "Chapter 4",
+                title: "Carbon and its Compounds",
+                desc: "The magic of covalent bonding, versatile carbon chains, and organic chemistry.",
+                icon: "hexagon", color: "cyan", pdf: "Books/Class_10/jesc104.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c10_5", class: "10", subject: "Biology", chapter: "Chapter 5",
+                title: "Life Processes",
+                desc: "Detailed mechanics of nutrition, respiration, transportation, and excretion in humans and plants.",
+                icon: "heart-pulse", color: "purple", pdf: "Books/Class_10/jesc105.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c10_6", class: "10", subject: "Biology", chapter: "Chapter 6",
+                title: "Control and Coordination",
+                desc: "Understand the human nervous system, brain anatomy, and hormonal coordination.",
+                icon: "brain", color: "purple", pdf: "Books/Class_10/jesc106.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c10_7", class: "10", subject: "Biology", chapter: "Chapter 7",
+                title: "How do Organisms Reproduce?",
+                desc: "Asexual and sexual reproduction mechanisms, and human reproductive systems.",
+                icon: "baby", color: "purple", pdf: "Books/Class_10/jesc107.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c10_8", class: "10", subject: "Biology", chapter: "Chapter 8",
+                title: "Heredity",
+                desc: "Mendel's laws of inheritance, sex determination, and transfer of traits.",
+                icon: "dna", color: "purple", pdf: "Books/Class_10/jesc108.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c10_9", class: "10", subject: "Physics", chapter: "Chapter 9",
+                title: "Light: Reflection and Refraction",
+                desc: "Master ray diagrams, spherical mirrors, lenses, and the mathematics of refractive indices.",
+                icon: "sun", color: "orange", pdf: "Books/Class_10/jesc109.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c10_10", class: "10", subject: "Physics", chapter: "Chapter 10",
+                title: "The Human Eye and the Colourful World",
+                desc: "Anatomy of the eye, vision defects, and atmospheric refraction phenomena.",
+                icon: "eye", color: "orange", pdf: "Books/Class_10/jesc110.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c10_11", class: "10", subject: "Physics", chapter: "Chapter 11",
+                title: "Electricity",
+                desc: "Electric current, potential difference, Ohm's Law, and heating effects.",
+                icon: "zap", color: "orange", pdf: "Books/Class_10/jesc111.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c10_12", class: "10", subject: "Physics", chapter: "Chapter 12",
+                title: "Magnetic Effects of Electric Current",
+                desc: "Magnetic fields, electromagnets, Fleming's rules, and motors.",
+                icon: "magnet", color: "orange", pdf: "Books/Class_10/jesc112.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c10_13", class: "10", subject: "Biology", chapter: "Chapter 13",
+                title: "Our Environment",
+                desc: "Ecosystems, food chains, energy flow, and ozone depletion.",
+                icon: "leaf", color: "purple", pdf: "Books/Class_10/jesc113.pdf", simTheme: "bio", hasVideo: true
+            },
+
+            // ================= CLASS 9 (Still Online as Fallback) =================
+            {
+                id: "c9_1", class: "9", subject: "Chemistry", chapter: "Chapter 1",
+                title: "Matter in Our Surroundings",
+                desc: "Physical nature of matter, states of matter (solid, liquid, gas), and evaporation cooling effects.",
+                icon: "box", color: "cyan", pdf: "https://ncert.nic.in/textbook/pdf/iesc101.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c9_2", class: "9", subject: "Chemistry", chapter: "Chapter 2",
+                title: "Is Matter Around Us Pure?",
+                desc: "Differentiate between mixtures, solutions, suspensions, and understand separation techniques.",
+                icon: "droplet", color: "cyan", pdf: "https://ncert.nic.in/textbook/pdf/iesc102.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c9_3", class: "9", subject: "Chemistry", chapter: "Chapter 3",
+                title: "Atoms and Molecules",
+                desc: "Laws of chemical combination, Dalton's theory, atomic mass, and writing chemical formulae.",
+                icon: "atom", color: "cyan", pdf: "https://ncert.nic.in/textbook/pdf/iesc103.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c9_4", class: "9", subject: "Chemistry", chapter: "Chapter 4",
+                title: "Structure of the Atom",
+                desc: "Thomson, Rutherford, and Bohr models. Explore subatomic particles and electronic configurations.",
+                icon: "orbit", color: "cyan", pdf: "https://ncert.nic.in/textbook/pdf/iesc104.pdf", simTheme: "chem", hasVideo: true
+            },
+            {
+                id: "c9_5", class: "9", subject: "Biology", chapter: "Chapter 5",
+                title: "The Fundamental Unit of Life",
+                desc: "Discover the microscopic world of cells, plasma membranes, nucleus, and diverse organelles.",
+                icon: "microscope", color: "purple", pdf: "https://ncert.nic.in/textbook/pdf/iesc105.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c9_6", class: "9", subject: "Biology", chapter: "Chapter 6",
+                title: "Tissues",
+                desc: "Plant tissues (meristematic, permanent) and Animal tissues (epithelial, connective, muscular, nervous).",
+                icon: "layers", color: "purple", pdf: "https://ncert.nic.in/textbook/pdf/iesc106.pdf", simTheme: "bio", hasVideo: true
+            },
+            {
+                id: "c9_7", class: "9", subject: "Physics", chapter: "Chapter 7",
+                title: "Motion",
+                desc: "Distance, displacement, velocity, acceleration, and graphical representation of linear motion.",
+                icon: "trending-up", color: "orange", pdf: "https://ncert.nic.in/textbook/pdf/iesc107.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c9_8", class: "9", subject: "Physics", chapter: "Chapter 8",
+                title: "Force and Laws of Motion",
+                desc: "Balanced/unbalanced forces, Newton's three laws, inertia, and conservation of momentum.",
+                icon: "wind", color: "orange", pdf: "https://ncert.nic.in/textbook/pdf/iesc108.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c9_9", class: "9", subject: "Physics", chapter: "Chapter 9",
+                title: "Gravitation",
+                desc: "Universal law of gravitation, free fall, mass vs weight, thrust, pressure, and Archimedes' principle.",
+                icon: "arrow-down-circle", color: "orange", pdf: "https://ncert.nic.in/textbook/pdf/iesc109.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c9_10", class: "9", subject: "Physics", chapter: "Chapter 10",
+                title: "Work and Energy",
+                desc: "Scientific concept of work, kinetic/potential energy, and the law of conservation of energy.",
+                icon: "battery-charging", color: "orange", pdf: "https://ncert.nic.in/textbook/pdf/iesc110.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c9_11", class: "9", subject: "Physics", chapter: "Chapter 11",
+                title: "Sound",
+                desc: "Production and propagation of sound waves, reflection, echoes, and structure of the human ear.",
+                icon: "volume-2", color: "orange", pdf: "https://ncert.nic.in/textbook/pdf/iesc111.pdf", simTheme: "physics", hasVideo: true
+            },
+            {
+                id: "c9_12", class: "9", subject: "Biology", chapter: "Chapter 12",
+                title: "Improvement in Food Resources",
+                desc: "Crop yields, manure, fertilizers, irrigation, cropping patterns, and animal husbandry.",
+                icon: "wheat", color: "purple", pdf: "https://ncert.nic.in/textbook/pdf/iesc112.pdf", simTheme: "bio", hasVideo: true
+            }
+        ];
+
+        let currentClass = '10';
+        let currentSubject = 'All';
+        let searchQuery = '';
+
+        window.changeClass = function(cls) {
+            currentClass = cls;
+            document.querySelectorAll('.class-tab').forEach(btn => {
+                if(!btn.classList.contains('cursor-not-allowed')) {
+                    btn.classList.remove('active-class-tab', 'font-bold');
+                    btn.classList.add('text-slate-400', 'font-semibold');
+                }
+            });
+            const activeBtn = document.getElementById(`btn-class-${cls}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'font-semibold');
+                activeBtn.classList.add('active-class-tab', 'font-bold');
+            }
+            renderGrid();
+        }
+
+        window.changeSubject = function(sub) {
+            currentSubject = sub;
+            document.querySelectorAll('.subject-tab').forEach(btn => {
+                btn.classList.remove('active-subject-tab');
+                btn.classList.add('bg-transparent', 'text-slate-400', 'border-transparent');
+            });
+            const activeBtn = document.getElementById(`btn-sub-${sub}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-transparent', 'text-slate-400', 'border-transparent');
+                activeBtn.classList.add('active-subject-tab');
+            }
+            renderGrid();
+        }
+
+        document.getElementById('global-search').addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderGrid();
+        });
+
+        // --- RENDER GRID WITH SMART MODALS ---
+        function renderGrid() {
+            const grid = document.getElementById('library-grid');
+            const emptyState = document.getElementById('empty-state');
+            grid.innerHTML = '';
+            
+            const filteredData = ncertDatabase.filter(item => {
+                const matchClass = item.class === currentClass;
+                const matchSubject = currentSubject === 'All' || item.subject === currentSubject;
+                const matchSearch = item.title.toLowerCase().includes(searchQuery) || 
+                                    item.chapter.toLowerCase().includes(searchQuery) ||
+                                    item.desc.toLowerCase().includes(searchQuery);
+                return matchClass && matchSubject && matchSearch;
+            });
+
+            if (filteredData.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                grid.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+
+                filteredData.forEach((item, index) => {
+                    const delay = index * 0.05; 
+                    
+                    let badgeColor = `bg-${item.color}-500/10 text-${item.color}-400 border-${item.color}-500/20`;
+                    let iconColor = `text-${item.color}-400 bg-${item.color}-500/10 border-${item.color}-500/20`;
+                    let borderHover = `hover:border-${item.color}-500/50`;
+                    let gradient = `from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500`;
+
+                    // Generate Absolute paths for relative local links so the simulator can read them
+                    let resolvedPdfUrl = item.pdf.startsWith('http') ? item.pdf : `../NCERT/${item.pdf}`;
+
+                    let xrLabBtn = '';
+                    if (item.simTheme === 'chem') {
+                        xrLabBtn = `<a href="../chemistry/simulator.html?autoStart=true&name=${encodeURIComponent(item.title)}&pdf=${encodeURIComponent(resolvedPdfUrl)}" class="flex items-center justify-center gap-2 text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl py-2.5 transition-all border border-cyan-500/30 active:scale-95 shadow-inner col-span-2">
+                            <i data-lucide="flask-conical" class="w-4 h-4"></i> Open in Chem Lab
+                        </a>`;
+                    } else if (item.simTheme === 'bio') {
+                        xrLabBtn = `<a href="../bio.html?pdf=${encodeURIComponent(resolvedPdfUrl)}&title=${encodeURIComponent(item.title)}" class="flex items-center justify-center gap-2 text-xs font-bold bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl py-2.5 transition-all border border-purple-500/30 active:scale-95 shadow-inner col-span-2">
+                            <i data-lucide="dna" class="w-4 h-4"></i> Open in Bio Lab
+                        </a>`;
+                    } else if (item.simTheme === 'physics') {
+                        xrLabBtn = `<a href="../physics.html" class="flex items-center justify-center gap-2 text-xs font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-xl py-2.5 transition-all border border-orange-500/30 active:scale-95 shadow-inner col-span-2">
+                            <i data-lucide="atom" class="w-4 h-4"></i> Open in Physics Engine
+                        </a>`;
+                    }
+
+                    // MODAL HOOKS: Smart PDF & Video Modals
+                    const cardHTML = `
+                        <div class="library-card bg-slate-900/60 backdrop-blur-xl border border-white/10 ${borderHover} rounded-[2rem] p-6 shadow-xl flex flex-col h-full animate-pop-in opacity-0 group" style="animation-delay: ${delay}s; animation-fill-mode: forwards;">
+                            
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="w-14 h-14 ${iconColor} rounded-2xl flex items-center justify-center border transition-transform duration-300 transform group-hover:scale-110 shrink-0">
+                                    <i data-lucide="${item.icon}" class="w-7 h-7"></i>
+                                </div>
+                                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                                    <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md border ${badgeColor}">${item.subject}</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md border bg-slate-800 border-slate-700 text-slate-400">Class ${item.class}</span>
+                                </div>
+                            </div>
+                            
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">${item.chapter}</h3>
+                            <h2 class="text-xl font-extrabold text-white mb-2 leading-tight group-hover:text-${item.color}-300 transition-colors">${item.title}</h2>
+                            <p class="text-sm text-slate-400 mb-6 flex-1 line-clamp-2">${item.desc}</p>
+                            
+                            <div class="grid grid-cols-2 gap-2 mb-6">
+                                <button onclick="openSmartPDF('${item.pdf}', '${item.title}', '${item.subject}', '${item.simTheme}')" class="flex items-center justify-center gap-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl py-2.5 transition-all border border-white/5 hover:border-slate-400 active:scale-95">
+                                    <i data-lucide="book-open" class="w-3.5 h-3.5 text-blue-400"></i> Read NCERT
+                                </button>
+                                <button onclick="openVideoList('${item.title}')" class="flex items-center justify-center gap-2 text-xs font-bold ${item.hasVideo ? 'bg-white/5 hover:bg-white/10 text-slate-300 hover:border-slate-400 cursor-pointer active:scale-95' : 'bg-black/20 text-slate-600 cursor-not-allowed'} rounded-xl py-2.5 transition-all border border-white/5">
+                                    <i data-lucide="video" class="w-3.5 h-3.5 ${item.hasVideo ? 'text-red-400' : 'text-slate-600'}"></i> Watch Video
+                                </button>
+                                ${xrLabBtn}
+                            </div>
+                            
+                            <div class="mt-auto border-t border-white/10 pt-4">
+                                <button onclick="openSuperpowerModal('${item.title}')" class="w-full py-3 bg-gradient-to-r ${gradient} text-white rounded-xl font-bold text-sm transition-all hover:-translate-y-1 shadow-[0_0_15px_rgba(168,85,247,0.3)] active:scale-95 flex items-center justify-center gap-2 group/btn relative overflow-hidden">
+                                    <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover/btn:animate-shimmer pointer-events-none"></div>
+                                    <i data-lucide="bot" class="w-4 h-4 relative z-10 group-hover/btn:scale-125 transition-transform"></i> 
+                                    <span class="relative z-10">Teacher Superpower 🔥</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    grid.insertAdjacentHTML('beforeend', cardHTML);
+                });
+                
+                lucide.createIcons();
+            }
+        }
+
+        // ==========================================
+        // SMART PDF VIEWER & WHITEBOARD LOGIC
+        // ==========================================
+        const smartPdfModal = document.getElementById('smart-pdf-modal');
+        const pdfIframe = document.getElementById('pdf-iframe');
+        const pdfLoader = document.getElementById('pdf-loading-overlay');
+        const pdfLabBtn = document.getElementById('pdf-lab-btn');
+        const pdfLiveBtn = document.getElementById('pdf-live-class-btn');
+        
+        // Canvas Setup
+        const canvas = document.getElementById('whiteboard-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentMode = 'pan'; // pan, draw, erase, highlight
+        let strokeColor = '#ef4444';
+        let strokeWidth = 4;
+
+        // Resize Canvas to fit container properly
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        window.openSmartPDF = function(pdfUrl, title, subject, simTheme) {
+            document.getElementById('pdf-modal-title').innerText = title;
+            
+            // Dynamic Lab Button Setup based on Subject
+            let resolvedPdf = pdfUrl.startsWith('http') ? pdfUrl : `../NCERT/${pdfUrl}`;
+
+            let labIcon = 'box'; let labName = 'XR Lab'; let labColor = 'bg-cyan-500 hover:bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-slate-950';
+            if(subject === 'Chemistry') { labIcon = 'flask-conical'; labName = 'Chem Lab'; labColor = 'bg-cyan-500 hover:bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)] text-slate-950'; }
+            if(subject === 'Biology') { labIcon = 'dna'; labName = 'Bio Lab'; labColor = 'bg-purple-500 hover:bg-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] text-white'; }
+            if(subject === 'Physics') { labIcon = 'atom'; labName = 'Physics Lab'; labColor = 'bg-orange-500 hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.4)] text-white'; }
+
+            pdfLabBtn.className = `px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 ${labColor}`;
+            pdfLabBtn.innerHTML = `<i data-lucide="${labIcon}" class="w-4 h-4 fill-current"></i> Open in ${labName}`;
+            
+            pdfLabBtn.onclick = () => {
+                if (simTheme === 'chem') window.location.href = `../chemistry/simulator.html?autoStart=true&name=${encodeURIComponent(title)}&pdf=${encodeURIComponent(resolvedPdf)}`;
+                else if (simTheme === 'bio') window.location.href = `../bio.html?pdf=${encodeURIComponent(resolvedPdf)}&title=${encodeURIComponent(title)}`;
+                else if (simTheme === 'physics') window.location.href = `../physics.html`;
+                else alert("Simulator for this module is not available yet.");
+            };
+
+            pdfLiveBtn.onclick = () => { window.location.href = `../Classrooms/class10.html`; };
+
+            // Embed PDF
+            pdfLoader.style.display = 'flex';
+            
+            // Fix for local PDFs in iframes - we pass it natively instead of via Google Docs if it's local
+            const isExternal = pdfUrl.startsWith('http');
+            pdfIframe.src = isExternal ? `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true` : `${pdfUrl}#toolbar=0`;
+            
+            pdfIframe.onload = () => { 
+                setTimeout(()=> { 
+                    pdfLoader.style.display = 'none'; 
+                    resizeCanvas(); 
+                }, 1000); 
+            };
+
+            // Reset Whiteboard
+            clearCanvas();
+            setCanvasMode('pan');
+            
+            // Show Modal and force resize after rendering
+            smartPdfModal.classList.remove('hidden');
+            smartPdfModal.classList.add('flex');
+            setTimeout(() => { 
+                smartPdfModal.classList.remove('opacity-0'); 
+                resizeCanvas(); 
+            }, 300); // Wait for modal to fully display before getting width/height
+            
+            lucide.createIcons();
+        };
+
+        window.closeSmartPDF = function() {
+            smartPdfModal.classList.add('opacity-0');
+            setTimeout(() => {
+                smartPdfModal.classList.add('hidden');
+                smartPdfModal.classList.remove('flex');
+                pdfIframe.src = ''; 
+                document.getElementById('nova-sidebar').classList.add('translate-x-full'); // Close Nova if open
+            }, 300);
+        };
+
+        // --- WHITEBOARD DRAWING LOGIC ---
+        window.setCanvasMode = function(mode) {
+            currentMode = mode;
+            
+            // UI Button Updates
+            document.getElementById('tool-pan').classList.remove('tool-active');
+            document.getElementById('tool-draw').classList.remove('tool-active');
+            document.getElementById('tool-highlight').classList.remove('tool-active');
+            document.getElementById('tool-erase').classList.remove('tool-active');
+            
+            if(mode === 'pan') {
+                document.getElementById('tool-pan').classList.add('tool-active');
+                canvas.style.pointerEvents = 'none'; // Pass clicks to PDF
+                canvas.style.cursor = 'default';
+            } else {
+                if(mode === 'draw') {
+                    document.getElementById('tool-draw').classList.add('tool-active');
+                    canvas.style.cursor = 'crosshair';
+                }
+                if(mode === 'highlight') {
+                    document.getElementById('tool-highlight').classList.add('tool-active');
+                    canvas.style.cursor = 'text'; // Highlighter feel
+                }
+                if(mode === 'erase') {
+                    document.getElementById('tool-erase').classList.add('tool-active');
+                    canvas.style.cursor = 'cell'; // Eraser feel
+                }
+                canvas.style.pointerEvents = 'auto'; // Capture clicks on Canvas
+            }
+        };
+
+        window.setColor = function(color, btnEl) {
+            strokeColor = color;
+            document.querySelectorAll('.color-swatch').forEach(btn => btn.classList.remove('active'));
+            btnEl.classList.add('active');
+            if (currentMode === 'pan' || currentMode === 'erase') {
+                setCanvasMode('draw'); // Auto switch to draw mode
+            }
+        };
+
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            strokeWidth = e.target.value;
+        });
+
+        window.clearCanvas = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        };
+
+        // Mouse Events
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        
+        // Touch Events
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPosition(e.touches[0]); });
+        canvas.addEventListener('touchend', endPosition);
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+
+        function startPosition(e) {
+            if (currentMode === 'pan') return;
+            isDrawing = true;
+            draw(e);
+        }
+
+        function endPosition() {
+            isDrawing = false;
+            ctx.beginPath(); // Reset path so next click doesn't connect
+        }
+
+        function draw(e) {
+            if (!isDrawing || currentMode === 'pan') return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Highligter, Pen and Eraser Logic
+            if (currentMode === 'erase') {
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.lineWidth = strokeWidth * 5; 
+                ctx.globalAlpha = 1.0;
+            } else if (currentMode === 'highlight') {
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = strokeWidth * 6; // Thicker for highlight
+                ctx.globalAlpha = 0.2; // Transparency
+            } else {
+                // Normal Draw
+                ctx.globalCompositeOperation = "source-over";
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = strokeWidth;
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        // ==========================================
+        // NOVA AI SIDEBAR & SUPERPOWER LOGIC (GEMINI API CONNECTED)
+        // ==========================================
+        window.toggleNovaSidebar = function() {
+            const sidebar = document.getElementById('nova-sidebar');
+            sidebar.classList.toggle('translate-x-full');
+        };
+
+        // Helper to parse markdown
+        function parseFormatting(text) {
+            let parsedText = text;
+            parsedText = parsedText.replace(/^### (.*$)/gim, '<h3 class="text-white font-bold mb-1">$1</h3>');
+            parsedText = parsedText.replace(/^## (.*$)/gim, '<h2 class="text-indigo-300 font-bold mb-1">$1</h2>');
+            parsedText = parsedText.replace(/^# (.*$)/gim, '<h1 class="text-indigo-400 font-bold mb-2">$1</h1>');
+            parsedText = parsedText.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>');
+            parsedText = parsedText.replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
+            parsedText = parsedText.replace(/`([^`]+)`/g, '<code class="bg-indigo-900/30 text-indigo-300 px-1 py-0.5 rounded text-xs">$1</code>');
+            parsedText = parsedText.replace(/^[\*-] (.*$)/gim, '<li class="ml-4 list-disc marker:text-indigo-400">$1</li>');
+            parsedText = parsedText.replace(/\n/g, '<br>');
+            return parsedText;
+        }
+
+        // Mini Chat in Viewer
+        window.sendMiniNovaMessage = async function() {
+            const input = document.getElementById('nova-mini-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            const chat = document.getElementById('nova-mini-chat');
+            const chapterTitle = document.getElementById('pdf-modal-title').innerText;
+            
+            // User Message
+            chat.innerHTML += `
+                <div class="bg-slate-800 border border-white/5 p-3 rounded-xl rounded-tr-sm text-sm text-slate-300 self-end ml-4 shadow-md">
+                    ${msg}
+                </div>
+            `;
+            input.value = '';
+
+            // Loading
+            const loadId = 'mini-load-' + Date.now();
+            chat.innerHTML += `
+                <div id="${loadId}" class="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl rounded-tl-sm text-sm text-slate-300 self-start mr-4 flex items-center gap-2">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-400"></i> Thinking...
+                </div>
+            `;
+            lucide.createIcons();
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                // DYNAMIC CONTEXT: API knows the exact chapter being read
+                const sysPrompt = `You are Nova, an AI teaching assistant. The teacher is currently reading the NCERT chapter titled: "${chapterTitle}". Answer their questions strictly based on this chapter's context. Explain concepts clearly. Use simple formatting. Answer in Hindi or Hinglish if the user asks in Hindi/Hinglish.`;
+                
+                const responseText = await fetchGeminiAPI(msg, sysPrompt);
+                document.getElementById(loadId).remove();
+                
+                chat.innerHTML += `
+                    <div class="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl rounded-tl-sm text-sm text-slate-300 self-start mr-4 shadow-[0_0_10px_rgba(99,102,241,0.1)]">
+                        <strong class="text-indigo-300 block mb-1">Nova:</strong>
+                        ${parseFormatting(responseText)}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById(loadId).remove();
+                chat.innerHTML += `<div class="text-red-400 text-xs">Error: ${error.message}</div>`;
+            }
+            chat.scrollTop = chat.scrollHeight;
+        };
+
+        // Main Superpower Modal Logic
+        const modal = document.getElementById('superpower-modal');
+        const modalContent = document.getElementById('superpower-content');
+        const modalTitle = document.getElementById('modal-chapter-title');
+        const outputArea = document.getElementById('nova-output-area');
+        let isGenerating = false;
+
+        window.openSuperpowerModal = function(chapterTitle) {
+            modalTitle.innerText = chapterTitle;
+            outputArea.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center opacity-40 text-center animate-pop-in" id="nova-placeholder">
+                    <div class="p-4 bg-white/5 border border-white/10 rounded-full mb-4">
+                        <i data-lucide="sparkles" class="w-12 h-12 text-purple-400"></i>
+                    </div>
+                    <h4 class="text-xl font-bold text-white mb-2">Nova AI Ready</h4>
+                    <p class="max-w-xs mx-auto text-sm text-slate-400">Select your required outputs on the left and hit generate. Nova will analyze the NCERT PDF context instantly.</p>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+            lucide.createIcons();
+        };
+
+        window.closeSuperpowerModal = function() {
+            if (isGenerating) return; 
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        };
+
+        window.runNovaGeneration = async function() {
+            if (isGenerating) return;
+            const btn = document.getElementById('nova-generate-btn');
+            const checkboxes = document.querySelectorAll('.nova-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                alert("Please select at least one output option!");
+                return;
+            }
+
+            isGenerating = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> <span class="relative z-10">Synthesizing...</span>';
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            lucide.createIcons();
+
+            outputArea.innerHTML = `
+                <div class="flex flex-col items-center justify-center m-auto w-full max-w-lg h-full animate-pop-in">
+                    <div class="relative w-24 h-24 mb-8 flex items-center justify-center">
+                        <div class="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+                        <div class="absolute inset-0 border-4 border-transparent border-t-purple-500 rounded-full animate-spin"></div>
+                        <div class="absolute inset-2 border-4 border-transparent border-b-cyan-400 rounded-full animate-[spin_3s_linear_infinite_reverse]"></div>
+                        <i data-lucide="brain-circuit" class="w-8 h-8 text-purple-400"></i>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-4 shadow-inner">
+                        <div class="h-full bg-gradient-to-r from-purple-500 to-cyan-400 w-1/2 animate-[shimmer_1s_infinite_linear]"></div>
+                    </div>
+                    <p class="text-sm font-bold tracking-widest uppercase text-purple-400 animate-pulse">Parsing NCERT Context...</p>
+                </div>
+            `;
+            lucide.createIcons();
+
+            const chapterName = modalTitle.innerText;
+            const selectedOptions = Array.from(checkboxes).map(cb => cb.parentElement.innerText.trim()).join(", ");
+
+            try {
+                // Call actual Gemini API
+                const sysPrompt = `You are Nova, an AI Assistant for Teachers. Create educational content strictly based on the NCERT chapter: "${chapterName}". Provide the following outputs: ${selectedOptions}. Use markdown formatting. Make it practical for a teacher to use directly in a classroom.`;
+                
+                const responseText = await fetchGeminiAPI(`Generate resources for chapter: ${chapterName}`, sysPrompt);
+
+                let generatedHtml = `<div class="p-6 animate-pop-in">`;
+                generatedHtml += `
+                    <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-5">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-white">Generated Content: ${chapterName}</h2>
+                            <p class="text-xs text-purple-400 font-bold uppercase tracking-widest mt-1">Contextualized by Nova</p>
+                        </div>
+                        <button class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 flex items-center gap-2 border border-white/5">
+                            <i data-lucide="download" class="w-4 h-4"></i> Export All
+                        </button>
+                    </div>
+                `;
+                
+                generatedHtml += `
+                    <div class="bg-black/40 border border-white/5 rounded-2xl p-5 hover:border-purple-500/30 transition-colors">
+                        <div class="text-sm text-slate-300">
+                            ${parseFormatting(responseText)}
+                        </div>
+                    </div>
+                `;
+                generatedHtml += `</div>`;
+                
+                outputArea.innerHTML = generatedHtml;
+
+            } catch (error) {
+                outputArea.innerHTML = `<div class="p-10 text-center"><i data-lucide="alert-triangle" class="w-12 h-12 text-red-500 mx-auto mb-3"></i><p class="text-red-400 font-bold">API Error</p><p class="text-slate-400 text-sm mt-2">${error.message}</p></div>`;
+            }
+
+            lucide.createIcons();
+            isGenerating = false;
+            btn.innerHTML = `<div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-shimmer pointer-events-none"></div><i data-lucide="rotate-cw" class="w-5 h-5 relative z-10"></i> <span class="relative z-10">Regenerate</span>`;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        };
+
+        // Centralized Gemini API Fetch Function
+        async function fetchGeminiAPI(prompt, systemInstruction) {
+            if (typeof CONFIG === 'undefined' || !CONFIG.GEMINI_API_KEY || CONFIG.GEMINI_API_KEY === "PASTE_YOUR_API_KEY_HERE") {
+                throw new Error("Missing API Key in secrets/config.js");
+            }
+            
+            const models = ["gemini-2.5-flash-lite", "gemini-2.5-flash"];
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            for (const model of models) {
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+                    const res = await fetch(url, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if(data.error) continue;
+                    return data.candidates[0].content.parts[0].text;
+                } catch(e) { continue; }
+            }
+            throw new Error("Failed to connect to AI engine.");
+        }
+
+
+        // ==========================================
+        // VIDEO RESOURCES MODAL LOGIC
+        // ==========================================
+        const videoModal = document.getElementById('video-modal');
+        const videoModalContent = document.getElementById('video-modal-content');
+
+        window.openVideoList = function(chapterTitle) {
+            document.getElementById('video-modal-title').innerText = chapterTitle;
+            
+            videoModal.classList.remove('hidden');
+            videoModal.classList.add('flex');
+            setTimeout(() => {
+                videoModal.classList.remove('opacity-0');
+                videoModalContent.classList.remove('scale-95');
+                videoModalContent.classList.add('scale-100');
+            }, 10);
+        };
+
+        window.closeVideoModal = function() {
+            videoModal.classList.add('opacity-0');
+            videoModalContent.classList.remove('scale-100');
+            videoModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                videoModal.classList.add('hidden');
+                videoModal.classList.remove('flex');
+            }, 300);
+        };
+    </script>
+
+    <!-- FIREBASE INITIALIZATION FOR AUTH CHECK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (!user) window.location.href = "../login.html";
+                else document.getElementById('app-body').classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>

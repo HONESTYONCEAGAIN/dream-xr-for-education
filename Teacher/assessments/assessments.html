@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessments Hub - Dream XR</title>
+    
+    <!-- Load Configuration -->
+    <script src="../../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js for Performance Radar -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'uncover': 'uncover 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shimmer': 'shimmer 2.5s infinite linear',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        uncover: { '0%': { opacity: '0', transform: 'translateY(20px) scale(0.98)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+                        pulseGlow: { '0%, 100%': { opacity: 1, transform: 'scale(1)', boxShadow: '0 0 15px rgba(52,211,153,0.5)' }, '50%': { opacity: 0.8, transform: 'scale(1.05)', boxShadow: '0 0 25px rgba(52,211,153,0.8)' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Premium Background Pattern */
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 30px 30px; }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(52, 211, 153, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.6); }
+
+        .glass-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px -10px rgba(52, 211, 153, 0.2);
+            border-color: rgba(52, 211, 153, 0.4);
+        }
+        
+        /* Custom select styling for dropdowns */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="bg-[#020617] text-white font-sans overflow-hidden selection:bg-emerald-500/30 flex h-screen relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-700/20 rounded-full blur-[120px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-700/15 rounded-full blur-[120px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- DYNAMIC SIDEBAR CONTAINER -->
+    <div id="sidebar-container" class="z-20 shrink-0 h-full"></div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4 opacity-0 animate-uncover">
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+                    <i data-lucide="file-check-2" class="w-6 h-6 text-emerald-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white tracking-wide">Assessment Center</h2>
+                    <p class="text-sm text-slate-400 font-medium">Create, manage, and grade student evaluations</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 lg:gap-6 ml-auto opacity-0 animate-uncover" style="animation-delay: 0.1s;">
+                <div class="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Auto-Sync Active
+                </div>
+
+                <a href="../notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:animate-pulse"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                </a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CONTENT -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar relative">
+            <div class="max-w-7xl mx-auto flex flex-col gap-8 pb-12">
+
+                <!-- TOP ROW: AI Assessment Launcher & Live Exam -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-0 animate-slide-up">
+                    
+                    <!-- AI Assessment Launcher (Span 8) -->
+                    <div class="lg:col-span-8 bg-gradient-to-br from-slate-900/90 to-emerald-900/20 backdrop-blur-xl border border-emerald-500/30 rounded-[2rem] p-8 shadow-[0_15px_30px_-10px_rgba(52,211,153,0.2)] relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+                            <i data-lucide="brain-circuit" class="w-40 h-40 text-emerald-400"></i>
+                        </div>
+                        
+                        <div class="relative z-10 flex flex-col h-full justify-between">
+                            <div>
+                                <h3 class="text-2xl font-extrabold text-white mb-2 flex items-center gap-2">
+                                    <i data-lucide="zap" class="w-6 h-6 text-emerald-400"></i> Local Assessment Library
+                                </h3>
+                                <p class="text-slate-400 font-medium max-w-xl mb-6">Access perfectly balanced tests mapped to the NCERT syllabus. Select a chapter to launch its dedicated assessment module.</p>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
+                                <div class="relative w-40 group/select">
+                                    <select id="class-select" class="w-full bg-slate-800 border border-white/10 group-hover/select:border-emerald-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors" onchange="updateChapters()">
+                                        <option value="10">Class 10 Science</option>
+                                        <option value="9">Class 9 Science</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400 group-hover/select:text-emerald-400 transition-colors"><i data-lucide="chevron-down" class="w-4 h-4"></i></div>
+                                </div>
+                                <div class="relative flex-1 min-w-[200px] group/select">
+                                    <select id="chapter-select" onchange="updateLaunchLink()" class="w-full bg-slate-800 border border-white/10 group-hover/select:border-emerald-500/50 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer transition-colors">
+                                        <!-- Chapters populated by JS -->
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-400 group-hover/select:text-emerald-400 transition-colors"><i data-lucide="chevron-down" class="w-4 h-4"></i></div>
+                                </div>
+                                <button id="launch-assessment-btn" onclick="launchAssessment()" class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(52,211,153,0.3)] active:scale-95 flex items-center gap-2 whitespace-nowrap">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i> Open Assessment
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Test Monitor (Span 4) -->
+                    <div class="lg:col-span-4 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        
+                        <div>
+                            <div class="flex items-center justify-between mb-4 relative z-10">
+                                <h4 class="font-bold text-white flex items-center gap-2"><i data-lucide="radio" class="w-5 h-5 text-red-400"></i> Live Exam</h4>
+                                <span class="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest animate-pulse">
+                                    <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span> Active
+                                </span>
+                            </div>
+                            
+                            <h3 class="text-xl font-extrabold text-white mb-1 relative z-10" id="live-test-title">Loading...</h3>
+                            <p class="text-sm text-slate-400 mb-6 relative z-10" id="live-test-meta">Fetching details...</p>
+                            
+                            <div class="space-y-3 relative z-10">
+                                <div>
+                                    <div class="flex justify-between text-xs font-bold text-slate-400 mb-1">
+                                        <span>Completion</span>
+                                        <span class="text-emerald-400" id="live-test-completion">0 / 0 Students</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                                        <div id="live-test-progress" class="h-full bg-emerald-500 w-[0%] transition-all duration-500"></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between text-sm bg-black/30 p-2 rounded-lg border border-white/5 shadow-inner">
+                                    <span class="text-slate-400">Time Remaining</span>
+                                    <span class="font-mono font-bold text-red-400" id="live-test-timer">--:--</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full mt-4 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold transition-all active:scale-95 text-sm relative z-10 shadow-sm">
+                            Monitor Live Activity
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- MIDDLE ROW: Stats & Analytics -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 opacity-0 animate-slide-up" style="animation-delay: 0.1s;">
+                    <!-- Stat Card 1 -->
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 p-6 rounded-3xl glass-card flex items-center justify-between group">
+                        <div>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Tests Evaluated</p>
+                            <h3 class="text-3xl font-extrabold text-white group-hover:text-indigo-400 transition-colors">48</h3>
+                        </div>
+                        <div class="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/30">
+                            <i data-lucide="check-square" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <!-- Stat Card 2 -->
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 p-6 rounded-3xl glass-card flex items-center justify-between group">
+                        <div>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Class Average</p>
+                            <h3 class="text-3xl font-extrabold text-emerald-400">76%</h3>
+                        </div>
+                        <div class="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                            <i data-lucide="trending-up" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <!-- Stat Card 3 -->
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 p-6 rounded-3xl glass-card flex items-center justify-between group">
+                        <div>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Pending Grading</p>
+                            <h3 class="text-3xl font-extrabold text-yellow-400">12</h3>
+                        </div>
+                        <div class="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center text-yellow-400 border border-yellow-500/30">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <!-- Stat Card 4 -->
+                    <div class="bg-slate-900/60 backdrop-blur-md border border-white/10 p-6 rounded-3xl glass-card flex items-center justify-between group">
+                        <div>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">AI Accuracy</p>
+                            <h3 class="text-3xl font-extrabold text-cyan-400">98%</h3>
+                        </div>
+                        <div class="w-12 h-12 bg-cyan-500/20 rounded-2xl flex items-center justify-center text-cyan-400 border border-cyan-500/30">
+                            <i data-lucide="brain" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM ROW: Recent Assessments & Analytics -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-0 animate-slide-up" style="animation-delay: 0.2s;">
+                    
+                    <!-- Recent Assessments List (Span 7) -->
+                    <div class="lg:col-span-7 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl flex flex-col">
+                        <div class="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i> Recent Assessments
+                            </h3>
+                            <button class="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">View All</button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4" id="recent-assessments-list">
+                            <!-- Populated by JS -->
+                            <div class="flex justify-center items-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-slate-500"></i></div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Radar Chart (Span 5) -->
+                    <div class="lg:col-span-5 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl flex flex-col relative overflow-hidden">
+                        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2 relative z-10">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-400"></i> Class Performance Radar
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-4 relative z-10">Average scores across science modules</p>
+                        
+                        <div class="flex-1 relative w-full h-[250px] flex items-center justify-center z-10">
+                            <canvas id="performanceRadar"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Actual Chapters for Class 10
+        const class10Chapters = [
+            { id: "chapter1", title: "Chapter 1: Chemical Reactions and Equations" },
+            { id: "chapter2", title: "Chapter 2: Acids, Bases and Salts" },
+            { id: "chapter3", title: "Chapter 3: Metals and Non-metals" },
+            { id: "chapter4", title: "Chapter 4: Carbon and its Compounds" },
+            { id: "chapter5", title: "Chapter 5: Life Processes" },
+            { id: "chapter6", title: "Chapter 6: Control and Coordination" },
+            { id: "chapter7", title: "Chapter 7: How do Organisms Reproduce?" },
+            { id: "chapter8", title: "Chapter 8: Heredity" },
+            { id: "chapter9", title: "Chapter 9: Light - Reflection and Refraction" },
+            { id: "chapter10", title: "Chapter 10: The Human Eye and the Colourful World" },
+            { id: "chapter11", title: "Chapter 11: Electricity" },
+            { id: "chapter12", title: "Chapter 12: Magnetic Effects of Electric Current" },
+            { id: "chapter13", title: "Chapter 13: Our Environment" }
+        ];
+
+        // Dummy Data for Class 9
+        const class9Chapters = [
+            { id: "c9_1", title: "Chapter 1: Matter in Our Surroundings" },
+            { id: "c9_2", title: "Chapter 2: Is Matter Around Us Pure?" },
+            { id: "c9_3", title: "Chapter 3: Atoms and Molecules" },
+            { id: "c9_4", title: "Chapter 4: Structure of the Atom" }
+        ];
+
+        const syllabusData = {
+            "10": class10Chapters,
+            "9": class9Chapters
+        };
+
+        const dummyRecentAssessments = [
+            { id: 't1', title: 'Chapter 3: Metals & Non-Metals Test', class: 'Class 10', time: 'Conducted 2 days ago', status: 'Graded', avg: '82%', icon: 'file-check', color: 'emerald' },
+            { id: 't2', title: 'Chapter 5: Life Processes Theory', class: 'Class 10', time: 'Conducted yesterday', status: 'Pending Grading', action: 'Grade Now', icon: 'edit-3', color: 'yellow' },
+            { id: 't3', title: 'Chapter 1: Chemical Reactions MCQ', class: 'Class 10', time: 'Draft', status: 'Draft', action: 'Publish', icon: 'file-question', color: 'slate' },
+            { id: 't4', title: 'Chapter 11: Electricity Fundamentals', class: 'Class 10', time: 'Conducted 1 week ago', status: 'Graded', avg: '75%', icon: 'file-check', color: 'emerald' }
+        ];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            await loadSidebar('assessments');
+            initRadarChart();
+            updateChapters();
+            populateRecentAssessments();
+            simulateLiveTest();
+        });
+
+        // --- DYNAMIC SIDEBAR LOADER ---
+        async function loadSidebar(activePage) {
+            const sidebarContainer = document.getElementById('sidebar-container');
+            try {
+                const cacheBuster = new Date().getTime();
+                const response = await fetch('../sidebar/sidebar.html?v=' + cacheBuster);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                let html = await response.text();
+                
+                html = html.replace(/\[BASE\]/g, '../');
+                sidebarContainer.innerHTML = html;
+                
+                const activeLink = document.querySelector(`.sidebar-link[data-page="${activePage}"]`);
+                if (activeLink) {
+                    activeLink.className = "sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[inset_0_0_20px_rgba(52,211,153,0.15)] transition-all overflow-hidden";
+                    const icon = activeLink.querySelector('i');
+                    if (icon) icon.classList.remove('group-hover:text-emerald-400', 'text-slate-400');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (error) {
+                console.error("Failed to load sidebar:", error);
+            }
+        }
+
+        // --- DYNAMIC CHAPTER UPDATES ---
+        function updateChapters() {
+            const classVal = document.getElementById('class-select').value;
+            const chapterSelect = document.getElementById('chapter-select');
+            chapterSelect.innerHTML = '';
+            
+            const chapters = syllabusData[classVal] || [];
+            chapters.forEach(ch => {
+                const option = document.createElement('option');
+                option.value = ch.id; // Assign file ID like "chapter1"
+                option.textContent = ch.title;
+                chapterSelect.appendChild(option);
+            });
+
+            updateLaunchLink(); // Set initial link
+        }
+
+        // --- LAUNCH ASSESSMENT LINK GENERATOR ---
+        let currentTargetUrl = "";
+        
+        function updateLaunchLink() {
+            const classVal = document.getElementById('class-select').value;
+            const chapterId = document.getElementById('chapter-select').value;
+            
+            // Only Class 10 has physical HTML files right now based on the prompt
+            if (classVal === "10" && chapterId) {
+                currentTargetUrl = `Class 10 Assesments/${chapterId}.html`;
+            } else {
+                currentTargetUrl = ""; // Or some placeholder/fallback
+            }
+        }
+
+        function launchAssessment() {
+            if (currentTargetUrl) {
+                window.location.href = currentTargetUrl;
+            } else {
+                alert("Assessment file not available for this chapter yet.");
+            }
+        }
+
+        // --- POPULATE UI WIDGETS ---
+        function populateRecentAssessments() {
+            const listEl = document.getElementById('recent-assessments-list');
+            listEl.innerHTML = '';
+
+            dummyRecentAssessments.forEach(test => {
+                let statusBadge, rightSideContent;
+
+                if (test.status === 'Graded') {
+                    statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">Graded</span>`;
+                    rightSideContent = `<span class="text-sm font-bold text-white">Avg: <span class="text-emerald-400">${test.avg}</span></span>`;
+                } else if (test.status === 'Pending Grading') {
+                    statusBadge = `<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">Pending Grading</span>`;
+                    rightSideContent = `<button class="text-xs font-bold text-indigo-400 hover:underline">${test.action}</button>`;
+                } else {
+                    statusBadge = `<span class="bg-slate-500/10 text-slate-400 border border-slate-500/20 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest">Draft</span>`;
+                    rightSideContent = `<button class="text-xs font-bold text-indigo-400 hover:underline">${test.action}</button>`;
+                }
+
+                const cardHtml = `
+                    <div class="glass-card bg-black/40 border border-white/5 p-4 rounded-xl flex items-center justify-between group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-${test.color}-500/10 text-${test.color}-400 rounded-lg flex items-center justify-center border border-${test.color}-500/20 shrink-0 shadow-inner">
+                                <i data-lucide="${test.icon}" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-base group-hover:text-emerald-400 transition-colors">${test.title}</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">${test.class} • ${test.time}</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            ${statusBadge}
+                            ${rightSideContent}
+                        </div>
+                    </div>
+                `;
+                listEl.insertAdjacentHTML('beforeend', cardHtml);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function simulateLiveTest() {
+            document.getElementById('live-test-title').innerText = "Mid-Term: Chemical Reactions";
+            document.getElementById('live-test-meta').innerText = "Class 10 • Section A";
+            
+            let totalStudents = 45;
+            let completedStudents = 32;
+            let timeRemaining = 14 * 60 + 22; 
+
+            const updateUI = () => {
+                document.getElementById('live-test-completion').innerText = `${completedStudents} / ${totalStudents} Students`;
+                document.getElementById('live-test-progress').style.width = `${(completedStudents/totalStudents)*100}%`;
+                
+                const mins = Math.floor(timeRemaining / 60);
+                const secs = timeRemaining % 60;
+                document.getElementById('live-test-timer').innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            };
+
+            updateUI();
+
+            setInterval(() => {
+                if (timeRemaining > 0) timeRemaining--;
+                if (Math.random() > 0.8 && completedStudents < totalStudents) completedStudents++;
+                updateUI();
+            }, 1000);
+        }
+
+        // --- RADAR CHART LOGIC ---
+        let radarChart;
+        function initRadarChart() {
+            const ctx = document.getElementById('performanceRadar').getContext('2d');
+            
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Inter, sans-serif';
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'MCQs', 'Theory'],
+                    datasets: [
+                        {
+                            label: 'Class 10 (Current)',
+                            data: [85, 72, 88, 95, 80, 65],
+                            backgroundColor: 'rgba(52, 211, 153, 0.2)',
+                            borderColor: 'rgba(52, 211, 153, 0.8)',
+                            pointBackgroundColor: '#0f172a',
+                            pointBorderColor: '#34d399',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#34d399',
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Class 9 (Previous)',
+                            data: [70, 80, 75, 85, 70, 75],
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderColor: 'rgba(99, 102, 241, 0.5)',
+                            pointBackgroundColor: '#0f172a',
+                            pointBorderColor: '#6366f1',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#6366f1',
+                            borderWidth: 2,
+                            borderDash: [5, 5] 
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#cbd5e1',
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#34d399',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('class-select').addEventListener('change', (e) => {
+                const isClass10 = e.target.value === '10';
+                radarChart.data.datasets[0].label = isClass10 ? 'Class 10 (Current)' : 'Class 9 (Current)';
+                radarChart.data.datasets[0].data = isClass10 ? [85, 72, 88, 95, 80, 65] : [75, 82, 70, 88, 85, 70];
+                radarChart.update();
+            });
+        }
+    </script>
+    
+    <!-- Auth Guard -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) window.location.href = "../../login.html";
+                else document.getElementById('app-body').classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>
