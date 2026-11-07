@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Specimen Viewer | Biology - Dream XR</title>
+    
+    <!-- Secrets Configuration (Guarded against missing files) -->
+    <script src="../secrets/config.js" onerror="console.warn('secrets/config.js not found. Operating in local DB mode.')"></script>
+    <script src="../secrets/firebase-config.js" onerror="console.warn('secrets/firebase-config.js not found.')"></script>
+
+    <!-- Tailwind CSS & Lucide Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Modern Google Font: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Three.js, OrbitControls, GLTFLoader & DRACOLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'shimmer': 'shimmer 2s infinite linear'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: 0, transform: 'translateY(4px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+                        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body { 
+            background-color: #020617; 
+            color: #ffffff; 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .bg-pattern { 
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0); 
+            background-size: 30px 30px; 
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.5); }
+        
+        iframe { border: none; outline: none; }
+
+        /* AI Mode Button Active State */
+        .ai-mode-btn.active {
+            background-color: #a855f7 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+            border-color: #c084fc !important;
+        }
+
+        /* Sidebar Collapse Transitions */
+        #sidebar { transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-collapsed { width: 5rem !important; }
+        .sidebar-collapsed .menu-text, .sidebar-collapsed .menu-badge, .sidebar-collapsed .logo-text { display: none; }
+        .sidebar-collapsed .menu-item { justify-content: center; padding-left: 0; padding-right: 0; }
+
+        /* Custom Shimmer Loading Gradient */
+        .skeleton-shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(168,85,247,0.15) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
+        }
+
+        /* Smooth Accordion Dropdown Animation */
+        .accordion-wrapper {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+            opacity: 0;
+        }
+        .accordion-wrapper.open {
+            grid-template-rows: 1fr;
+            opacity: 1;
+        }
+        .accordion-inner {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-purple-500/30 flex h-screen relative" id="app-body">
+
+    <!-- Ambient Background Lighting -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- COLLAPSIBLE SIDEBAR -->
+    <aside id="sidebar" class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        <div class="h-24 flex items-center justify-between px-6 border-b border-white/10 shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                    <i data-lucide="hexagon" class="text-white w-6 h-6 animate-pulse"></i>
+                </div>
+                <h1 class="logo-text text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Dream XR</h1>
+            </div>
+            <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-xl hover:bg-white/10">
+                <i data-lucide="panel-left-close" id="sidebar-toggle-icon" class="w-5 h-5"></i>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-2 custom-scrollbar">
+            <p class="menu-text px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Navigation</p>
+            <a href="../bio.html" class="menu-item flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[inset_0_0_15px_rgba(168,85,247,0.1)] transition-all hover:bg-purple-500/20" title="Back to Library">
+                <i data-lucide="arrow-left" class="w-5 h-5 shrink-0"></i>
+                <span class="menu-text font-bold text-sm">Back to Library</span>
+            </a>
+            
+            <p class="menu-text px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools</p>
+            <a href="../aitutor.html" class="menu-item flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group" title="Ask Nova AI">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 shrink-0 group-hover:text-green-400 transition-colors"></i>
+                    <span class="menu-text font-semibold text-sm">Ask Nova AI</span>
+                </div>
+                <span class="menu-badge w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-6 md:px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                    <i data-lucide="activity" class="w-6 h-6 text-purple-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg md:text-xl font-bold text-white tracking-wide truncate max-w-[200px] md:max-w-md" id="specimen-title">Loading Specimen...</h2>
+                    <p class="text-xs text-slate-400 font-medium">Interactive Biological Specimen</p>
+                </div>
+            </div>
+            
+            <!-- AI Status Indicator -->
+            <div class="bg-black/50 border border-white/10 px-4 md:px-5 py-2 rounded-full flex items-center gap-3 shadow-inner">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" id="ai-status-indicator"></span>
+                <span id="ai-status-text" class="text-purple-400 font-bold text-[10px] md:text-xs tracking-widest uppercase hidden md:inline-block">Initializing...</span>
+            </div>
+        </header>
+
+        <!-- LAB INTERFACE (Scrollable) -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative" id="main-scroll-area">
+            
+            <div class="max-w-7xl mx-auto w-full flex flex-col gap-6 pb-12">
+                
+                <!-- AI QUICK ACTIONS -->
+                <div class="flex items-center gap-2.5 overflow-x-auto custom-scrollbar pb-2">
+                    <button onclick="changeAIMode('default')" id="btn-mode-default" class="ai-mode-btn active px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 backdrop-blur-sm"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Standard</button>
+                    <button onclick="changeAIMode('child')" id="btn-mode-child" class="ai-mode-btn px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 backdrop-blur-sm"><i data-lucide="baby" class="w-3.5 h-3.5"></i> Like I'm 10</button>
+                    <button onclick="changeAIMode('board')" id="btn-mode-board" class="ai-mode-btn px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 backdrop-blur-sm"><i data-lucide="graduation-cap" class="w-3.5 h-3.5"></i> Board Exam</button>
+                    <button onclick="changeAIMode('hindi')" id="btn-mode-hindi" class="ai-mode-btn px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all backdrop-blur-sm">🇮🇳 Hindi</button>
+                    <button onclick="changeAIMode('hinglish')" id="btn-mode-hinglish" class="ai-mode-btn px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all backdrop-blur-sm">🔥 Hinglish</button>
+                    <button onclick="changeAIMode('mcq')" id="btn-mode-mcq" class="ai-mode-btn px-4 py-2.5 bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 backdrop-blur-sm"><i data-lucide="list-checks" class="w-3.5 h-3.5"></i> Generate MCQs</button>
+                </div>
+
+                <!-- TOP ROW: 3D Simulation & Right Panel -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
+                    
+                    <!-- 360° 3D Model Viewer -->
+                    <div id="viewer-wrapper" class="col-span-1 lg:col-span-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] relative overflow-hidden flex flex-col shadow-xl cursor-move group min-h-[400px] lg:min-h-[550px] transition-all duration-300">
+                        
+                        <!-- Floating Info Panel over 3D Model -->
+                        <div class="absolute top-6 left-6 z-20 flex flex-col gap-2 pointer-events-none transition-opacity duration-300" id="floating-info-panel">
+                            <div class="bg-black/60 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-lg pointer-events-auto border-l-4 border-l-purple-500">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <span class="px-2.5 py-0.5 bg-purple-500/20 text-purple-400 rounded-md text-[10px] font-bold uppercase tracking-widest border border-purple-500/30" id="info-class">Loading...</span>
+                                    <span class="text-[10px] text-yellow-400 font-bold bg-yellow-500/10 px-2.5 py-0.5 rounded-md border border-yellow-500/20 tracking-widest" id="info-difficulty">--</span>
+                                </div>
+                                <h3 class="text-xl font-extrabold text-white mb-1 drop-shadow-md" id="info-title">Loading Specimen...</h3>
+                                <p class="text-xs text-slate-400 font-medium max-w-[200px]" id="info-desc">Initializing 3D Model</p>
+                            </div>
+                        </div>
+
+                        <!-- Auto-Hiding Interactive Controls Button -->
+                        <div class="absolute bottom-6 left-6 z-20 flex flex-col items-start pointer-events-none">
+                            <div id="controls-tooltip" class="opacity-0 transform translate-y-2 transition-all duration-500 text-slate-300 text-xs font-bold flex flex-col gap-1.5 drop-shadow-md bg-black/80 p-4 rounded-2xl border border-white/10 backdrop-blur-md mb-3 pointer-events-auto shadow-2xl">
+                                <div class="flex items-center gap-2 text-cyan-400 mb-1 border-b border-white/10 pb-2"><i data-lucide="mouse" class="w-4 h-4"></i> Interaction Guide</div>
+                                <span class="text-[11px] text-slate-300"><span class="text-purple-400 font-bold">Left Click + Drag:</span> Rotate 360°</span>
+                                <span class="text-[11px] text-slate-300"><span class="text-purple-400 font-bold">Right Click + Drag:</span> Pan View</span>
+                                <span class="text-[11px] text-slate-300"><span class="text-purple-400 font-bold">Scroll Wheel:</span> Zoom In/Out</span>
+                            </div>
+                            
+                            <button onclick="showControlsHint()" class="pointer-events-auto bg-slate-800/80 hover:bg-purple-600/90 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-lg flex items-center gap-2 active:scale-95 group">
+                                <i data-lucide="gamepad-2" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
+                                Controls
+                            </button>
+                        </div>
+
+                        <!-- Fullscreen Shortcut -->
+                        <div class="absolute bottom-6 right-6 z-20 pointer-events-none">
+                            <button onclick="toggleFullScreen()" class="pointer-events-auto bg-black/50 hover:bg-purple-600/80 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-lg flex items-center gap-2 group active:scale-95">
+                                <i data-lucide="maximize" class="w-4 h-4 group-hover:scale-110 transition-transform"></i>
+                                <span class="hidden sm:inline">Fullscreen</span>
+                                <span class="bg-white/20 px-1.5 py-0.5 rounded text-[9px] text-slate-300 hidden sm:inline ml-1 border border-white/10">Ctrl+M</span>
+                            </button>
+                        </div>
+
+                        <!-- Floating Toolbar (Three.js only) -->
+                        <div id="threejs-toolbar" class="absolute top-6 right-6 z-20 flex flex-col gap-3 hidden pointer-events-auto">
+                            <button onclick="resetCamera()" class="w-10 h-10 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white transition-all shadow-lg active:scale-95" title="Reset View"><i data-lucide="focus" class="w-4 h-4"></i></button>
+                            <button onclick="toggleWireframe()" id="wireframe-btn" class="w-10 h-10 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white transition-all shadow-lg active:scale-95" title="Toggle Wireframe"><i data-lucide="scan-line" class="w-4 h-4"></i></button>
+                            <button onclick="toggleRotation()" id="rotate-btn" class="w-10 h-10 bg-purple-600/80 hover:bg-purple-500 backdrop-blur-md border border-purple-500/50 rounded-full flex items-center justify-center text-white transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)] active:scale-95" title="Toggle Auto-Rotation"><i data-lucide="rotate-3d" class="w-4 h-4"></i></button>
+                        </div>
+
+                        <!-- Viewer Container -->
+                        <div id="three-container" class="absolute inset-0 w-full h-full z-10"></div>
+                        
+                        <!-- Futuristic Loading Overlay -->
+                        <div id="model-loading" class="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-30 flex flex-col items-center justify-center transition-opacity duration-500 px-6">
+                            <div class="relative w-24 h-24 flex items-center justify-center mb-8">
+                                <div class="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+                                <div class="absolute inset-0 border-4 border-transparent border-t-purple-500 rounded-full animate-spin"></div>
+                                <div class="absolute inset-2 border-4 border-transparent border-b-cyan-400 rounded-full animate-[spin_3s_linear_infinite_reverse]"></div>
+                                <i data-lucide="dna" class="w-8 h-8 text-purple-400 animate-pulse"></i>
+                            </div>
+                            
+                            <div class="w-64 h-1.5 bg-slate-800 rounded-full overflow-hidden mb-4 shadow-inner">
+                                <div id="loading-progress-bar" class="h-full bg-gradient-to-r from-purple-500 to-cyan-400 w-[0%] transition-all duration-300"></div>
+                            </div>
+                            
+                            <h3 id="loading-main-text" class="text-lg font-extrabold text-white tracking-widest uppercase mb-1 drop-shadow-md">Synthesizing Specimen</h3>
+                            <p id="loading-progress" class="text-purple-400 font-mono text-xs mb-8">0%</p>
+                            
+                            <div class="bg-black/40 border border-white/5 rounded-xl p-4 max-w-sm text-center">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 flex items-center justify-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> System Data</p>
+                                <p id="loading-fun-fact" class="text-slate-300 text-xs italic font-medium">Loading biological databases...</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Panel: AI Summaries & Key Anatomy -->
+                    <div class="col-span-1 lg:col-span-4 flex flex-col gap-6 h-full">
+                        
+                        <!-- AI Hero Overview Box -->
+                        <div class="bg-gradient-to-br from-slate-900/80 to-purple-900/10 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl shrink-0 border-t-4 border-t-purple-500 relative overflow-hidden transition-all hover:bg-slate-800/60">
+                            <h3 class="text-xl font-bold text-white mb-3 flex items-center gap-2 relative z-10"><i data-lucide="microscope" class="text-purple-400 w-5 h-5"></i> AI Overview</h3>
+                            <div id="ai-summary" class="text-slate-300 text-sm leading-relaxed relative z-10 font-medium">
+                                <div id="skeleton-summary" class="flex flex-col gap-2 opacity-60">
+                                    <div class="h-3 w-full rounded skeleton-shimmer"></div>
+                                    <div class="h-3 w-5/6 rounded skeleton-shimmer"></div>
+                                    <div class="h-3 w-4/6 rounded skeleton-shimmer"></div>
+                                    <p class="text-[10px] uppercase tracking-widest font-bold text-purple-400 mt-3 text-center animate-pulse">Establishing Neural Link...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Components Accordion Box -->
+                        <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl flex-1 flex flex-col overflow-hidden transition-all hover:bg-slate-800/60">
+                            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2 shrink-0"><i data-lucide="layers" class="text-pink-400 w-5 h-5"></i> Key Anatomy</h3>
+                            
+                            <div id="ai-components" class="flex-1 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-3">
+                                <div id="skeleton-components" class="flex flex-col gap-3 opacity-60">
+                                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                                    <p class="text-[10px] uppercase tracking-widest font-bold text-pink-400 mt-2 text-center animate-pulse">Extracting Systems...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- BOTTOM ROW: Deep Dive, Exam Tip & Real World -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Deep Dive Explanation -->
+                    <div class="lg:col-span-1 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none"><i data-lucide="book-open" class="w-24 h-24 text-purple-400 transform -rotate-12"></i></div>
+                        <h3 class="text-lg font-bold text-purple-400 mb-3 flex items-center gap-2 relative z-10"><i data-lucide="graduation-cap" class="w-5 h-5"></i> Biological Deep Dive</h3>
+                        <div id="ai-deepdive" class="text-slate-300 text-sm relative z-10 leading-relaxed min-h-[100px]">
+                            <div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>
+                        </div>
+                    </div>
+
+                    <!-- Exam Tip -->
+                    <div class="lg:col-span-1 bg-slate-900/80 backdrop-blur-xl border-l-4 border-l-yellow-500 border-y border-r border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group hover:bg-slate-800/80 transition-colors">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none"><i data-lucide="target" class="w-24 h-24 text-yellow-400"></i></div>
+                        <h3 class="text-lg font-bold text-yellow-500 mb-3 flex items-center gap-2 relative z-10"><i data-lucide="pen-tool" class="w-5 h-5"></i> BOARD EXAM ALERT</h3>
+                        <div id="ai-examtip" class="text-slate-300 text-sm relative z-10 leading-relaxed font-medium min-h-[100px]">
+                            <div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>
+                        </div>
+                    </div>
+
+                    <!-- Real World Application -->
+                    <div class="lg:col-span-1 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none"><i data-lucide="globe-2" class="w-24 h-24 text-cyan-400"></i></div>
+                        <h3 class="text-lg font-bold text-cyan-400 mb-3 flex items-center gap-2 relative z-10"><i data-lucide="lightbulb" class="w-5 h-5"></i> Real World Application</h3>
+                        <div id="ai-realworld" class="text-slate-300 text-sm relative z-10 leading-relaxed min-h-[100px]">
+                            <div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN LOGIC SCRIPTS -->
+    <script>
+        lucide.createIcons();
+
+        // --- SIDEBAR TOGGLE ---
+        let sidebarOpen = true;
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            sidebarOpen = !sidebarOpen;
+            if(sidebarOpen) {
+                sidebar.classList.remove('sidebar-collapsed');
+                icon.setAttribute('data-lucide', 'panel-left-close');
+            } else {
+                sidebar.classList.add('sidebar-collapsed');
+                icon.setAttribute('data-lucide', 'panel-left-open');
+            }
+            lucide.createIcons();
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
+        }
+
+        // --- FULLSCREEN TOGGLE ---
+        function toggleFullScreen() {
+            const wrapper = document.getElementById('viewer-wrapper');
+            const infoPanel = document.getElementById('floating-info-panel');
+
+            if (!document.fullscreenElement) {
+                if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+                else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+                else if (wrapper.msRequestFullscreen) wrapper.msRequestFullscreen();
+                wrapper.classList.add('rounded-none');
+                if (infoPanel) infoPanel.style.opacity = '0';
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                wrapper.classList.remove('rounded-none');
+                if (infoPanel) infoPanel.style.opacity = '1';
+            }
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) {
+                e.preventDefault();
+                toggleFullScreen();
+            }
+        });
+
+        // --- CONTROLS HINT TOOLTIP ---
+        let controlsTimeout;
+        window.showControlsHint = function() {
+            const tooltip = document.getElementById('controls-tooltip');
+            tooltip.classList.remove('opacity-0', 'translate-y-2');
+            tooltip.classList.add('opacity-100', 'translate-y-0');
+            
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(() => {
+                tooltip.classList.remove('opacity-100', 'translate-y-0');
+                tooltip.classList.add('opacity-0', 'translate-y-2');
+            }, 5000);
+        };
+
+        // --- URL PARAMS SETUP WITH FALLBACKS ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawModel = urlParams.get('model') || urlParams.get('gltf') || urlParams.get('file');
+        const rawEmbed = urlParams.get('embed') || urlParams.get('src') || urlParams.get('sketchfab');
+        
+        const nameParam = urlParams.get('name') || "Human Heart";
+        const descParam = urlParams.get('desc') || "Interactive 3D Biological Specimen";
+        
+        let embedParam = rawEmbed;
+        let modelParam = rawModel;
+
+        if (!embedParam && !modelParam) {
+            embedParam = "https://sketchfab.com/models/d13d4204d64849ec87b92f447cf00b21/embed";
+        }
+
+        document.getElementById('specimen-title').innerText = nameParam;
+        document.getElementById('info-title').innerText = nameParam;
+        document.getElementById('info-desc').innerText = descParam;
+
+        let currentAIMode = 'default';
+
+        // --- LOADING FACTS ---
+        const bioFacts = [
+            "The human body contains around 37 trillion cells.",
+            "Your heart beats about 100,000 times a day.",
+            "The brain uses about 20% of your body's energy.",
+            "Red blood cells live for around 120 days.",
+            "DNA sequences are 99.9% identical in all humans.",
+            "Press [Ctrl + M] for Fullscreen mode!"
+        ];
+        let factInterval;
+        function startLoadingFacts() {
+            let i = 0;
+            const factEl = document.getElementById('loading-fun-fact');
+            if(factEl) factEl.innerText = bioFacts[0];
+            factInterval = setInterval(() => {
+                i = (i + 1) % bioFacts.length;
+                if(factEl) {
+                    factEl.style.opacity = 0;
+                    setTimeout(() => { factEl.innerText = bioFacts[i]; factEl.style.opacity = 1; }, 200);
+                }
+            }, 3000);
+        }
+
+        // --- 3D / EMBED LOADER ROUTER ---
+        if (embedParam) {
+            document.getElementById('threejs-toolbar').classList.add('hidden'); 
+            startLoadingFacts();
+            
+            const optimizedEmbed = `${embedParam}?autostart=1&transparent=1&ui_theme=dark&ui_infos=0&ui_stop=0&ui_watermark=0`;
+
+            document.getElementById('three-container').innerHTML = `
+                <iframe title="${nameParam}" 
+                        src="${optimizedEmbed}" 
+                        class="absolute inset-0 w-full h-full z-10"
+                        allow="autoplay; fullscreen; xr-spatial-tracking; accelerometer; gyroscope; magnetometer; picture-in-picture" 
+                        xr-spatial-tracking 
+                        web-share>
+                </iframe>
+            `;
+            
+            let prog = 0;
+            const progBar = document.getElementById('loading-progress-bar');
+            const progText = document.getElementById('loading-progress');
+            const simInterval = setInterval(() => {
+                prog += Math.random() * 15;
+                if (prog > 90) prog = 90;
+                if(progBar) progBar.style.width = `${prog}%`;
+                if(progText) progText.innerText = `${Math.round(prog)}%`;
+            }, 200);
+
+            fetchAIAnalysis(nameParam, descParam, currentAIMode);
+
+            setTimeout(() => {
+                clearInterval(simInterval); clearInterval(factInterval);
+                if(progBar) progBar.style.width = '100%';
+                if(progText) progText.innerText = '100%';
+                document.getElementById('model-loading').classList.add('opacity-0');
+                setTimeout(() => document.getElementById('model-loading').classList.add('hidden'), 500);
+            }, 2000);
+
+        } else if (modelParam) {
+            startLoadingFacts();
+            const container = document.getElementById('three-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 15);
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            container.appendChild(renderer.domElement);
+
+            window.controls = new THREE.OrbitControls(camera, renderer.domElement);
+            window.controls.enableDamping = true;
+            window.controls.autoRotate = true;
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.8));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+
+            window.currentModel = null;
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
+            loader.setDRACOLoader(dracoLoader);
+
+            const cleanModelName = modelParam.replace(/^models\//, '');
+            const actualPath = `../models/${cleanModelName}`;
+            
+            loader.load(
+                actualPath, 
+                function (gltf) {
+                    const rawModel = gltf.scene;
+                    const wrapper = new THREE.Group();
+                    const box = new THREE.Box3().setFromObject(rawModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+
+                    rawModel.position.sub(center); 
+                    wrapper.add(rawModel);
+
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scaleTarget = maxDim > 0 ? (10 / maxDim) : 1;
+                    wrapper.scale.set(scaleTarget, scaleTarget, scaleTarget);
+                    
+                    scene.add(wrapper);
+                    window.currentModel = wrapper; 
+
+                    clearInterval(factInterval);
+                    document.getElementById('loading-progress-bar').style.width = '100%';
+                    document.getElementById('loading-progress').innerText = '100%';
+                    
+                    document.getElementById('model-loading').classList.add('opacity-0');
+                    setTimeout(() => document.getElementById('model-loading').classList.add('hidden'), 500);
+                    document.getElementById('threejs-toolbar').classList.remove('hidden');
+
+                    fetchAIAnalysis(nameParam, descParam, currentAIMode);
+                },
+                function (xhr) {
+                    if (xhr.lengthComputable) {
+                        const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                        document.getElementById('loading-progress').innerText = pct + '%';
+                        document.getElementById('loading-progress-bar').style.width = pct + '%';
+                    }
+                },
+                function (error) {
+                    console.error("Three.js Load Error:", error);
+                    clearInterval(factInterval);
+                    document.getElementById('model-loading').innerHTML = `
+                        <i data-lucide="alert-triangle" class="w-12 h-12 text-red-500 mb-4"></i>
+                        <p class="text-red-400 font-bold text-center">Failed to load 3D model.</p>
+                        <p class="text-slate-400 text-sm mt-2 text-center max-w-[250px]">Ensure '${actualPath}' exists.</p>
+                        <a href="../bio.html" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">Go Back</a>
+                    `;
+                    lucide.createIcons();
+                }
+            );
+
+            function animate() {
+                requestAnimationFrame(animate);
+                if(window.controls) window.controls.update(); 
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // --- THREE.JS TOOLBAR CONTROLS ---
+        let isAutoRotating = true;
+        let isWireframe = false;
+        
+        function resetCamera() { if (window.controls) { window.controls.object.position.set(0, 0, 15); window.controls.target.set(0, 0, 0); } }
+        function toggleRotation() {
+            if(!window.controls) return;
+            isAutoRotating = !isAutoRotating;
+            window.controls.autoRotate = isAutoRotating;
+            document.getElementById('rotate-btn').className = isAutoRotating ? "w-10 h-10 bg-purple-600/80 hover:bg-purple-500 border border-purple-500/50 rounded-full flex items-center justify-center text-white transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)]" : "w-10 h-10 bg-slate-800/80 hover:bg-slate-700 border border-white/10 rounded-full flex items-center justify-center text-white transition-all shadow-lg";
+        }
+        function toggleWireframe() {
+            if (!window.currentModel) return;
+            isWireframe = !isWireframe;
+            window.currentModel.traverse((child) => { if (child.isMesh && child.material) child.material.wireframe = isWireframe; });
+            document.getElementById('wireframe-btn').className = isWireframe ? "w-10 h-10 bg-cyan-600/80 hover:bg-cyan-500 border border-cyan-500/50 rounded-full flex items-center justify-center text-white transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)]" : "w-10 h-10 bg-slate-800/80 hover:bg-slate-700 border border-white/10 rounded-full flex items-center justify-center text-white transition-all shadow-lg";
+        }
+
+        // --- UI LOADING & ACCORDION ---
+        let loadingStateInterval;
+
+        function startFuturisticLoading() {
+            document.getElementById('ai-summary').innerHTML = `
+                <div class="flex flex-col items-center justify-center py-4 opacity-60">
+                    <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mb-3"><div class="h-full bg-purple-500 w-1/2 animate-[shimmer_1s_infinite_linear]"></div></div>
+                    <p class="text-xs uppercase tracking-widest font-bold text-purple-400 animate-pulse text-center">Fetching Explanation...</p>
+                </div>
+            `;
+            
+            document.getElementById('ai-components').innerHTML = `
+                <div class="flex flex-col gap-3 opacity-60">
+                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                    <div class="h-14 w-full rounded-xl skeleton-shimmer border border-white/5"></div>
+                </div>
+            `;
+            
+            document.getElementById('ai-deepdive').innerHTML = `<div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>`;
+            document.getElementById('ai-examtip').innerHTML = `<div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>`;
+            document.getElementById('ai-realworld').innerHTML = `<div class="skeleton-shimmer h-24 w-full rounded-xl opacity-50"></div>`;
+        }
+
+        function stopFuturisticLoading() {
+            clearInterval(loadingStateInterval);
+        }
+
+        window.changeAIMode = function(mode) {
+            currentAIMode = mode;
+            document.querySelectorAll('.ai-mode-btn').forEach(btn => btn.classList.remove('active'));
+            const modeBtn = document.getElementById(`btn-mode-${mode}`);
+            if(modeBtn) modeBtn.classList.add('active');
+            fetchAIAnalysis(nameParam, descParam, mode);
+        };
+
+        // --- SMOOTH ANIMATED ACCORDION TOGGLE ---
+        window.toggleAccordion = function(id) {
+            const wrapper = document.getElementById(`accordion-wrapper-${id}`);
+            const icon = document.getElementById(`accordion-icon-${id}`);
+            
+            if (wrapper.classList.contains('open')) {
+                wrapper.classList.remove('open');
+                icon.classList.remove('rotate-180');
+            } else {
+                wrapper.classList.add('open');
+                icon.classList.add('rotate-180');
+            }
+        };
+
+        function updateAIStatus(status, isError = false, isCache = false) {
+            const statusText = document.getElementById('ai-status-text');
+            const statusInd = document.getElementById('ai-status-indicator');
+            if (statusText) statusText.innerText = status;
+            if (statusInd) {
+                if (isError) statusInd.className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]";
+                else if (isCache) statusInd.className = "w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]";
+                else if (status === "Analysis Complete") statusInd.className = "w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc]";
+                else statusInd.className = "w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_#a855f7]";
+            }
+        }
+
+        function displayAIResults(jsonData) {
+            stopFuturisticLoading();
+            
+            document.getElementById('info-class').innerText = jsonData.classLevel || "Class 10";
+            document.getElementById('info-difficulty').innerText = jsonData.difficulty || "⭐⭐⭐";
+
+            document.getElementById('ai-summary').innerHTML = `<p class="animate-fade-in text-base">${jsonData.summary}</p>`;
+            
+            if (jsonData.components && Array.isArray(jsonData.components)) {
+                document.getElementById('ai-components').innerHTML = jsonData.components.map((c, idx) => `
+                    <div class="bg-black/40 border border-white/5 rounded-2xl hover:border-white/10 transition-colors overflow-hidden animate-fade-in" style="animation-delay: ${idx * 0.05}s">
+                        <button onclick="toggleAccordion(${idx})" class="w-full p-4 flex items-center justify-between text-left focus:outline-none group">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-pink-500/20 rounded-xl p-2 shrink-0 group-hover:scale-110 transition-transform"><i data-lucide="activity" class="w-4 h-4 text-pink-400"></i></div>
+                                <h4 class="text-white font-bold text-sm tracking-wide">${c.name}</h4>
+                            </div>
+                            <i data-lucide="chevron-down" id="accordion-icon-${idx}" class="w-4 h-4 text-slate-400 transition-transform duration-300"></i>
+                        </button>
+                        
+                        <div id="accordion-wrapper-${idx}" class="accordion-wrapper">
+                            <div class="accordion-inner px-4 pb-4 pt-1 text-sm border-t border-white/5 bg-black/20">
+                                <div class="mb-3">
+                                    <span class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 block">Function / Description</span>
+                                    <p class="text-slate-300 leading-relaxed text-xs sm:text-sm">${c.function}</p>
+                                </div>
+                                ${c.boardTip ? `
+                                <div class="mb-3 border-l-2 border-yellow-500 pl-3 py-0.5">
+                                    <span class="text-[10px] uppercase tracking-widest text-yellow-500 font-bold mb-0.5 flex items-center gap-1"><i data-lucide="pen-tool" class="w-3 h-3"></i> Board Exam Tip</span>
+                                    <p class="text-slate-300 text-xs">${c.boardTip}</p>
+                                </div>` : ''}
+                                ${c.funFact ? `
+                                <div class="border-l-2 border-cyan-500 pl-3 py-0.5">
+                                    <span class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-0.5 flex items-center gap-1"><i data-lucide="sparkles" class="w-3 h-3"></i> Key Fact</span>
+                                    <p class="text-slate-300 text-xs">${c.funFact}</p>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                 document.getElementById('ai-components').innerHTML = `<p class="text-slate-400 italic">No details available.</p>`;
+            }
+            
+            document.getElementById('ai-deepdive').innerHTML = `<p class="leading-relaxed text-xs sm:text-sm">${jsonData.deepDive ? jsonData.deepDive.replace(/\n/g, '<br>') : "Data not found."}</p>`;
+            document.getElementById('ai-examtip').innerHTML = `<p class="leading-relaxed text-xs sm:text-sm">${jsonData.examTip ? jsonData.examTip.replace(/\n/g, '<br>') : "Data not found."}</p>`;
+            document.getElementById('ai-realworld').innerHTML = `<p class="leading-relaxed text-xs sm:text-sm">${jsonData.realWorld ? jsonData.realWorld.replace(/\n/g, '<br>') : "Data not found."}</p>`;
+            
+            lucide.createIcons();
+        }
+
+        // --- FETCH FROM LOCAL DATABASE FILE ---
+        async function fetchFromLocalDB(modelName, mode) {
+            const possiblePaths = ['database/ai-cache.json', '../database/ai-cache.json', '/database/ai-cache.json'];
+            
+            for (const path of possiblePaths) {
+                try {
+                    const res = await fetch(path);
+                    if (!res.ok) continue;
+                    const dbData = await res.json();
+                    
+                    const lowerSearch = modelName.toLowerCase();
+                    const keys = Object.keys(dbData);
+                    
+                    // Fuzzy keyword matching
+                    const matchedKey = keys.find(k => 
+                        lowerSearch.includes(k.toLowerCase()) || k.toLowerCase().includes(lowerSearch)
+                    );
+
+                    if (matchedKey && dbData[matchedKey]) {
+                        const specimenData = dbData[matchedKey];
+                        const result = specimenData[mode] || specimenData['default'] || specimenData;
+                        if (result && result.summary) {
+                            return result;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`Local cache load error from ${path}:`, err);
+                }
+            }
+            return null;
+        }
+
+        // --- DUAL FETCH ARCHITECTURE (CACHE -> GEMINI API -> LOCAL JSON DB) ---
+        async function fetchAIAnalysis(modelName, modelDesc, mode = 'default') {
+            startFuturisticLoading();
+            
+            const cacheKey = `dream_xr_bio_${mode}_${encodeURIComponent(modelName)}`;
+            
+            // 1. CHECK BROWSER LOCALSTORAGE CACHE
+            const storedCache = localStorage.getItem(cacheKey);
+            if (storedCache) {
+                try {
+                    const parsedData = JSON.parse(storedCache);
+                    updateAIStatus("Loaded from Cache", false, true);
+                    displayAIResults(parsedData);
+                    return;
+                } catch(e) {
+                    localStorage.removeItem(cacheKey);
+                }
+            }
+
+            // 2. CHECK & ATTEMPT GEMINI API
+            const hasApiKey = typeof CONFIG !== 'undefined' && 
+                              CONFIG.GEMINI_API_KEY && 
+                              CONFIG.GEMINI_API_KEY !== "PASTE_YOUR_API_KEY_HERE" &&
+                              CONFIG.GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY_HERE";
+
+            if (hasApiKey) {
+                updateAIStatus("AI Synthesizing...");
+
+                let modeInstruction = "Use simple, clear English suitable for high school students.";
+                if (mode === 'child') modeInstruction = "Explain like I'm 10 years old with fun analogies.";
+                if (mode === 'board') modeInstruction = "Explain strictly for Board Exams with bullet points and precise definitions.";
+                if (mode === 'hindi') modeInstruction = "Explain completely in Hindi (Devanagari script).";
+                if (mode === 'hinglish') modeInstruction = "Explain in Hinglish (blend of Hindi and English).";
+                if (mode === 'mcq') modeInstruction = "Generate 4 Multiple Choice Questions inside the 'components' array with questions in 'name' and options in 'function'.";
+
+                const prompt = `Analyze this biology specimen: "${modelName}". Context: "${modelDesc}".`;
+                const systemText = `You are an elite biology tutor. Return ONLY a JSON object:
+                {
+                    "difficulty": "⭐⭐⭐",
+                    "classLevel": "Class 10",
+                    "summary": "2 sentence overview.",
+                    "components": [{"name": "Part Name", "function": "Description", "boardTip": "Tip", "funFact": "Fact"}],
+                    "deepDive": "Detailed explanation.",
+                    "examTip": "Board exam advice.",
+                    "realWorld": "Real world/medical application."
+                }
+                Rule: ${modeInstruction}`;
+
+                const modelsToTry = [ "gemini-2.5-flash", "gemini-1.5-flash" ];
+
+                for (const model of modelsToTry) {
+                    try {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.GEMINI_API_KEY}`, {
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                contents: [{ parts: [{ text: prompt }] }], 
+                                systemInstruction: { parts: [{ text: systemText }] }, 
+                                generationConfig: { responseMimeType: "application/json" } 
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (!data.error && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+                            let jsonText = data.candidates[0].content.parts[0].text;
+                            if (jsonText.includes('```')) {
+                                const match = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                                jsonText = match ? match[1] : jsonText.replace(/^```json\n?/, '').replace(/```$/, '').trim();
+                            }
+                            
+                            const jsonData = JSON.parse(jsonText);
+                            localStorage.setItem(cacheKey, JSON.stringify(jsonData));
+                            updateAIStatus("Analysis Complete");
+                            displayAIResults(jsonData);
+                            return; 
+                        }
+                    } catch (err) {
+                        console.warn(`Gemini API [${model}] failed, falling back to local DB...`, err);
+                    }
+                }
+            }
+
+            // 3. FALLBACK: LOCAL DATABASE FILE (database/ai-cache.json)
+            updateAIStatus("Loading Offline DB...");
+            const localDbResult = await fetchFromLocalDB(modelName, mode);
+
+            if (localDbResult) {
+                localStorage.setItem(cacheKey, JSON.stringify(localDbResult));
+                updateAIStatus("Loaded Offline DB", false, true);
+                displayAIResults(localDbResult);
+                return;
+            }
+
+            // 4. FINAL ERROR FALLBACK
+            updateAIStatus("Offline - No Data Found", true);
+            stopFuturisticLoading();
+            document.getElementById('ai-summary').innerHTML = `<span class="text-amber-400 font-bold">Could not load AI explanation.</span><br><span class="text-xs text-slate-400">Please check internet connection or add API key in secrets/config.js.</span>`;
+            document.getElementById('ai-components').innerHTML = `<p class="text-slate-400 text-xs italic p-2">Local database entry not found for "${modelName}".</p>`;
+            document.getElementById('ai-deepdive').innerHTML = `<p class="text-slate-400 text-xs">N/A</p>`;
+            document.getElementById('ai-examtip').innerHTML = `<p class="text-slate-400 text-xs">N/A</p>`;
+            document.getElementById('ai-realworld').innerHTML = `<p class="text-slate-400 text-xs">N/A</p>`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dream XR - Thermal Reaction Engine</title>
+    
+    <!-- Load Configuration for API Key & Firebase -->
+    <script src="../secrets/config.js"></script>
+    <script src="../secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Three.js & OrbitControls for High-Fidelity 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfeff',
+                            100: '#cffaff',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                        }
+                    },
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .bg-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0);
+            background-size: 30px 30px;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.5); }
+
+        /* Kinetics Timeline Styles */
+        .timeline-line {
+            position: absolute;
+            left: 11px;
+            top: 24px;
+            bottom: 24px;
+            width: 2px;
+            background: rgba(255,255,255,0.1);
+            z-index: 0;
+        }
+        
+        .cursor-blink::after {
+            content: '|';
+            animation: blink 1s step-start infinite;
+            color: #22d3ee;
+            margin-left: 2px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-orange-700/15 rounded-full blur-[140px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/10 rounded-full blur-[140px] z-0 pointer-events-none"></div>
+
+    <!-- SIDEBAR (Hardcoded latest config) -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-2xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            <a class='flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../index.html'>
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a class='flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[inset_0_0_15px_rgba(34,211,238,0.1)] transition-all' href='chemistry.html'>
+                <i data-lucide="flask-conical" class="w-5 h-5 animate-pulse-fast"></i>
+                <span class="font-bold text-sm">Chemistry Lab</span>
+            </a>
+            <a class='flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../physics.html'>
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a class='flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../bio.html'>
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            <a class='flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../aitutor.html'>
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-fast shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+            </a>
+            <a class='flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../labhistory.html'>
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+        </div>
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a class='flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../settings.html'>
+                <i data-lucide="settings" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-6 lg:px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <a class='w-10 h-10 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center border border-white/10 transition-colors cursor-pointer' href='chemistry.html' title='Back to Hub'>
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-slate-300"></i>
+                </a>
+                <div class="w-12 h-12 bg-orange-500/20 rounded-2xl flex items-center justify-center border border-orange-500/30 ml-2">
+                    <i data-lucide="flame" class="w-6 h-6 text-orange-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+                        Thermal Reaction Engine
+                        <span class="text-[10px] font-bold text-orange-300 bg-orange-950 border border-orange-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-block">LIVE</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 font-medium">Kinetic Heating & Decomposition Simulator</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- LAB INTERFACE -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+            <div class="max-w-7xl mx-auto w-full flex flex-col gap-6 pb-12">
+                
+                <!-- TOP ROW: 3D Viewport & Live Telemetry -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
+                    
+                    <!-- Left: 3D Viewport -->
+                    <div class="col-span-1 lg:col-span-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] relative overflow-hidden flex flex-col shadow-xl cursor-move group">
+                        
+                        <div class="absolute top-6 left-6 z-20 flex flex-col gap-2 pointer-events-none">
+                            <div class="text-slate-300 text-xs font-bold flex items-center gap-2 bg-slate-950/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-lg">
+                                <i data-lucide="mouse-pointer-2" class="w-4 h-4 text-cyan-400"></i> Drag to rotate | Scroll to Zoom
+                            </div>
+                            <div id="temp-sensor-pill" class="text-xs font-mono text-orange-300 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-orange-500/40 flex items-center gap-2 w-fit shadow-lg transition-colors">
+                                <i data-lucide="thermometer" class="w-3.5 h-3.5 text-orange-400"></i>
+                                <span id="live-temp-display">25.0 °C</span>
+                                <span class="w-px h-3 bg-white/20 mx-1"></span>
+                                <span id="sim-timer" class="text-white font-bold tracking-wider">00:00.0</span>
+                            </div>
+                        </div>
+
+                        <!-- 3D Container -->
+                        <div id="three-container" class="absolute inset-0 w-full h-full"></div>
+                        
+                        <!-- AI Processing Overlay with Dynamic Tips -->
+                        <div id="ai-loading" class="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-30 flex flex-col items-center justify-center hidden">
+                            <div class="relative flex items-center justify-center mb-6">
+                                <div class="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                                <i data-lucide="cpu" class="w-6 h-6 text-cyan-400 absolute animate-pulse"></i>
+                            </div>
+                            <span class="text-cyan-300 font-bold tracking-widest uppercase text-center px-4 text-sm mb-4">Synthesizing Kinetics...</span>
+                            <div class="bg-slate-900/80 border border-white/5 rounded-xl px-6 py-4 max-w-md text-center shadow-lg">
+                                <span class="text-[10px] text-purple-400 font-bold uppercase tracking-wider block mb-1">Did you know?</span>
+                                <span class="text-slate-300 text-xs italic transition-opacity duration-500" id="ai-fact-tip">Loading lab data...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: LIVE TELEMETRY PANEL (Restored Exact Layout) -->
+                    <div class="col-span-1 lg:col-span-4 flex flex-col gap-6 h-full">
+                        <div class="bg-[#0b1120] border border-white/5 rounded-3xl p-7 shadow-2xl flex-1 flex flex-col relative overflow-hidden">
+                            
+                            <div class="flex items-center justify-between mb-8 shrink-0 relative z-10">
+                                <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+                                    <i data-lucide="activity" class="text-cyan-400 w-6 h-6"></i> Live Telemetry
+                                </h3>
+                                <span class="text-[10px] font-bold text-cyan-300 border border-cyan-800 px-3 py-1 rounded bg-cyan-950/40 uppercase tracking-widest">Live</span>
+                            </div>
+
+                            <div class="mb-8 relative z-10">
+                                <label class="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-2">Target Reactants</label>
+                                <div class="bg-[#111827] border border-white/5 rounded-xl p-3.5 text-sm font-bold text-cyan-400 flex flex-wrap gap-2 items-center min-h-[50px] shadow-inner" id="reactants-display">
+                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-slate-500"></i> Parsing...
+                                </div>
+                            </div>
+
+                            <!-- Kinetics Timeline -->
+                            <div class="mb-8 relative z-10 flex-1">
+                                <label class="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-4">Kinetics Timeline</label>
+                                <div class="flex flex-col gap-5 relative ml-1">
+                                    <div class="timeline-line"></div>
+                                    
+                                    <div class="flex items-center gap-4 relative" id="stage-1">
+                                        <div class="w-6 h-6 rounded-full bg-slate-800 border-4 border-[#0b1120] flex items-center justify-center shrink-0 z-10 transition-all">
+                                            <span class="w-1.5 h-1.5 bg-slate-950 rounded-full transition-all"></span>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-400 transition-all">Ignition & Heating</span>
+                                    </div>
+                                    <div class="flex items-center gap-4 relative" id="stage-2">
+                                        <div class="w-6 h-6 rounded-full bg-slate-800 border-4 border-[#0b1120] flex items-center justify-center shrink-0 z-10 transition-all">
+                                            <span class="w-1.5 h-1.5 bg-slate-950 rounded-full transition-all"></span>
+                                        </div>
+                                        <span id="stage-2-text" class="text-sm font-semibold text-slate-400 transition-all">Thermal Decomposition</span>
+                                    </div>
+                                    <div class="flex items-center gap-4 relative" id="stage-3">
+                                        <div class="w-6 h-6 rounded-full bg-slate-800 border-4 border-[#0b1120] flex items-center justify-center shrink-0 z-10 transition-all">
+                                            <span class="w-1.5 h-1.5 bg-slate-950 rounded-full transition-all"></span>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-400 transition-all">Residue Formation</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Controls -->
+                            <div class="mt-auto pt-6 border-t border-white/5 relative z-10 space-y-3">
+                                <button id="stop-btn" onclick="stopSimulation()" class="w-full py-3.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-lg hidden">
+                                    <i data-lucide="square" class="w-4 h-4 fill-current"></i> Stop Reaction
+                                </button>
+                                <button onclick="window.location.href='chemistry.html'" class="w-full py-3.5 text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700/50 border border-white/5 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+                                    <i data-lucide="settings-2" class="w-4 h-4 text-slate-400"></i> New Setup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM ROW: Experimental Observations (Restored Exact Layout) -->
+                <div class="bg-gradient-to-br from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-cyan-500/20 rounded-[2rem] p-7 lg:p-8 shadow-xl relative overflow-hidden flex flex-col">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                        <i data-lucide="sparkles" class="w-48 h-48 text-cyan-400 -mt-10 -mr-10"></i>
+                    </div>
+
+                    <!-- Header & Quick Utilities -->
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5 mb-6 relative z-10">
+                        <h3 class="text-2xl font-bold text-cyan-400 flex items-center gap-3">
+                            <i data-lucide="book-open" class="w-6 h-6"></i> Experimental Observations & Explanation
+                        </h3>
+                        <div class="flex items-center gap-3">
+                            <button class="px-4 py-2 bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-800/50 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer">
+                                <i data-lucide="bot" class="w-4 h-4"></i> Ask AI Tutor
+                            </button>
+                            <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer">
+                                <i data-lucide="bookmark" class="w-4 h-4 text-cyan-400"></i> Save Run
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Equation (Top Right conceptually, placed neatly) -->
+                    <div class="mb-6 relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] text-orange-400 font-bold uppercase tracking-widest mb-1">Balanced Chemical Equation</span>
+                            <div id="equation-display" class="font-mono text-base sm:text-lg text-white font-bold opacity-50 break-words leading-relaxed">
+                                Waiting for reactants...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observation Cards Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 relative z-10">
+                        <div class="bg-[#0b1120]/60 border border-white/5 rounded-xl p-4">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold mb-1.5">Color Change</span>
+                            <span id="obs-color" class="font-bold text-slate-200 text-sm">Meniscus clear / initial state</span>
+                        </div>
+                        <div class="bg-[#0b1120]/60 border border-white/5 rounded-xl p-4">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold mb-1.5">Gas Evolved</span>
+                            <span id="obs-gas" class="font-bold text-yellow-400 text-sm">None detected</span>
+                        </div>
+                        <div class="bg-[#0b1120]/60 border border-white/5 rounded-xl p-4">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold mb-1.5">Residue / Precipitate</span>
+                            <span id="obs-residue" class="font-bold text-slate-200 text-sm">Awaiting reaction</span>
+                        </div>
+                        <div class="bg-[#0b1120]/60 border border-white/5 rounded-xl p-4">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold mb-1.5">Thermal Classification</span>
+                            <span id="obs-thermal" class="font-bold text-purple-300 text-sm">Ambient</span>
+                        </div>
+                    </div>
+
+                    <!-- Explanation -->
+                    <div class="text-slate-300 leading-relaxed text-sm sm:text-base max-w-5xl font-medium relative z-10" id="explanation-display">
+                        <span class="opacity-50 italic">Enter reactants, select conditions, and start the simulation. The AI Engine will generate a detailed chemical analysis here.</span>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        const container = document.getElementById('three-container');
+        let scene, camera, renderer, controls;
+        let apparatusGroup, solidGroup;
+        let burnerFlameCore, burnerFlameOuter;
+        let fumeParticles;
+        let isSimulating = false;
+        let simProgress = 0; 
+        let targetColorStart, targetColorEnd;
+        let currentReactionData = null;
+        let currentApparatusType = 'boiling_tube'; // 'boiling_tube' or 'crucible'
+
+        // Soft Texture for Particles
+        function createSoftSprite() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,64,64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 1.0, 15);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.35;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false;
+            controls.minDistance = 5;
+            controls.maxDistance = 25;
+            controls.target.set(0, 0, 0);
+
+            // Studio Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+            const key = new THREE.DirectionalLight(0xffffff, 2.0);
+            key.position.set(5, 10, 7);
+            scene.add(key);
+            const rim = new THREE.DirectionalLight(0x22d3ee, 1.5);
+            rim.position.set(-6, 8, -5);
+            scene.add(rim);
+
+            const burnerLight = new THREE.PointLight(0xf97316, 0, 10);
+            burnerLight.name = "burnerLight";
+            burnerLight.position.set(0, -3.2, 0); 
+            scene.add(burnerLight);
+
+            apparatusGroup = new THREE.Group();
+            scene.add(apparatusGroup);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function buildBoilingTubeSetup() {
+            apparatusGroup.clear();
+            currentApparatusType = 'boiling_tube';
+
+            // 1. Retort Stand & Clamp
+            const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 2.0), ironMat);
+            base.position.set(-2.0, -4.5, 0);
+            const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.5, 32), new THREE.MeshStandardMaterial({color: 0xcfd8dc}));
+            rod.position.set(-2.0, -1.25, 0);
+            const boss = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), ironMat);
+            boss.position.set(-2.0, 0, 0);
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 16), ironMat);
+            arm.rotation.z = Math.PI/2;
+            arm.position.set(-1.2, 0, 0);
+            
+            // 2. Pyrex Boiling Tube (Clamped at y=0, tilted 30 deg)
+            const tubeGroup = new THREE.Group();
+            tubeGroup.position.set(-0.4, 0, 0); // Clamp grip point
+            tubeGroup.rotation.z = -0.5; // Tilt away
+            
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff, transmission: 0.95, ior: 1.517, roughness: 0.02, clearcoat: 1.0, transparent: true, side: THREE.DoubleSide
+            });
+            const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 4.0, 32, 1, true), glassMat);
+            const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.4, 32, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2), glassMat);
+            bottom.position.y = -2.0;
+            tube.add(bottom);
+            tube.position.y = -0.5; // Shift so clamp grips upper third
+            tubeGroup.add(tube);
+
+            // 3. Bunsen Burner (Positioned EXACTLY under the tube bottom)
+            const tubeBottomWorld = new THREE.Vector3(0, -2.5, 0); // Local to tubeGroup
+            tubeBottomWorld.applyEuler(tubeGroup.rotation);
+            tubeBottomWorld.add(tubeGroup.position);
+
+            const burner = new THREE.Group();
+            const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.2, 32), ironMat);
+            bBase.position.y = -4.5;
+            const bTube = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 32), new THREE.MeshStandardMaterial({color: 0x94a3b8}));
+            bTube.position.y = -3.7;
+            burner.add(bBase, bTube);
+            burner.position.set(tubeBottomWorld.x, 0, tubeBottomWorld.z);
+
+            // Flames
+            burnerFlameCore = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 32), new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending }));
+            burnerFlameCore.position.y = -2.6;
+            burnerFlameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending }));
+            burnerFlameOuter.position.y = -2.4;
+            burner.add(burnerFlameCore, burnerFlameOuter);
+            burnerFlameCore.scale.set(0.001, 0.001, 0.001);
+            burnerFlameOuter.scale.set(0.001, 0.001, 0.001);
+
+            // 4. Solid Granules (Inside tube bottom)
+            solidGroup = new THREE.Group();
+            solidGroup.position.set(0, -1.7, 0); // Local to tube
+            tubeGroup.add(solidGroup);
+
+            apparatusGroup.add(base, rod, boss, arm, tubeGroup, burner);
+            
+            // Fume Emitter position (Mouth of tube)
+            const tubeMouthWorld = new THREE.Vector3(0, 1.5, 0);
+            tubeMouthWorld.applyEuler(tubeGroup.rotation);
+            tubeMouthWorld.add(tubeGroup.position);
+            buildParticles(tubeMouthWorld);
+        }
+
+        function buildCrucibleSetup() {
+            apparatusGroup.clear();
+            currentApparatusType = 'crucible';
+            
+            const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            
+            // 1. Tripod & Gauze
+            const tripod = new THREE.Group();
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.08, 16, 48), ironMat);
+            ring.rotation.x = Math.PI/2;
+            ring.position.y = -1.5;
+            tripod.add(ring);
+            
+            for(let i=0; i<3; i++) {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.0, 16), ironMat);
+                const a = (i * Math.PI * 2) / 3;
+                leg.position.set(Math.cos(a)*1.4, -3.0, Math.sin(a)*1.4);
+                leg.rotation.z = Math.cos(a)*0.1;
+                leg.rotation.x = -Math.sin(a)*0.1;
+                tripod.add(leg);
+            }
+            const gauze = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.04, 2.5), new THREE.MeshStandardMaterial({ color: 0xcfd8dc }));
+            gauze.position.y = -1.45;
+            tripod.add(gauze);
+
+            // 2. Porcelain Crucible
+            const crucible = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.5, 0.8, 32, 1, false), new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 }));
+            crucible.position.y = -1.0;
+            apparatusGroup.add(tripod, crucible);
+
+            // 3. Burner
+            const burner = new THREE.Group();
+            const bBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.2, 32), ironMat);
+            bBase.position.y = -4.5;
+            const bTube = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.4, 32), new THREE.MeshStandardMaterial({color: 0x94a3b8}));
+            bTube.position.y = -3.7;
+            burner.add(bBase, bTube);
+
+            burnerFlameCore = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 32), new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending }));
+            burnerFlameCore.position.y = -2.6;
+            burnerFlameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.2, 32), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending }));
+            burnerFlameOuter.position.y = -2.4;
+            burner.add(burnerFlameCore, burnerFlameOuter);
+            burnerFlameCore.scale.set(0.001, 0.001, 0.001);
+            burnerFlameOuter.scale.set(0.001, 0.001, 0.001);
+            apparatusGroup.add(burner);
+
+            // 4. Solid Granules
+            solidGroup = new THREE.Group();
+            solidGroup.position.set(0, -1.2, 0); // Inside crucible
+            apparatusGroup.add(solidGroup);
+
+            // Fume Emitter position
+            buildParticles(new THREE.Vector3(0, -0.5, 0));
+        }
+
+        function populateGranules(hexColor) {
+            solidGroup.clear();
+            const chunkGeo = new THREE.DodecahedronGeometry(currentApparatusType === 'boiling_tube' ? 0.12 : 0.15, 0);
+            const chunkMat = new THREE.MeshStandardMaterial({ color: hexColor, roughness: 0.9, metalness: 0.1 });
+            
+            const count = currentApparatusType === 'boiling_tube' ? 30 : 15;
+            const spread = currentApparatusType === 'boiling_tube' ? 0.25 : 0.4;
+
+            for(let i=0; i<count; i++) {
+                const mesh = new THREE.Mesh(chunkGeo, chunkMat.clone());
+                const r = Math.random() * spread; 
+                const theta = Math.random() * Math.PI * 2;
+                mesh.position.set(Math.cos(theta)*r, Math.random()*0.2, Math.sin(theta)*r);
+                mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+                solidGroup.add(mesh);
+            }
+        }
+
+        function buildParticles(emitterPos) {
+            if(fumeParticles) scene.remove(fumeParticles);
+            
+            const sprite = createSoftSprite();
+            const fGeo = new THREE.BufferGeometry();
+            const fPos = new Float32Array(500 * 3);
+            
+            // Store original emitter y to reset particles
+            fumeParticles = { emitterY: emitterPos.y, emitterX: emitterPos.x, emitterZ: emitterPos.z };
+            
+            for(let i=0; i<500; i++) {
+                fPos[i*3] = emitterPos.x + (Math.random()-0.5)*0.5; 
+                fPos[i*3+1] = emitterPos.y + Math.random()*2;
+                fPos[i*3+2] = emitterPos.z + (Math.random()-0.5)*0.5;
+            }
+            fGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
+            
+            // We set blending to NormalBlending for smoke, Additive for dazzling light
+            const fMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, map: sprite, transparent: true, opacity: 0, depthWrite: false });
+            fumeParticles.mesh = new THREE.Points(fGeo, fMat);
+            scene.add(fumeParticles.mesh);
+        }
+
+        function animate3D(time) {
+            requestAnimationFrame(animate3D);
+            controls.update();
+
+            if (isSimulating && currentReactionData) {
+                // Color lerping logic for residue
+                if (simProgress > 0.2 && simProgress <= 0.8 && targetColorStart && targetColorEnd) {
+                    const localT = (simProgress - 0.2) / 0.6;
+                    solidGroup.children.forEach(mesh => {
+                        mesh.material.color.lerpColors(targetColorStart, targetColorEnd, localT);
+                    });
+                }
+
+                // Burner Flame Flicker
+                if (simProgress < 0.95) {
+                    const s = 1.0 + Math.sin(time * 0.01) * 0.05;
+                    burnerFlameCore.scale.set(s, s, s);
+                    burnerFlameOuter.scale.set(s, s + Math.random()*0.1, s);
+                    const pLight = scene.getObjectByName("burnerLight");
+                    if(pLight) pLight.intensity = 2.5 + Math.sin(time*0.015)*0.5;
+                } else {
+                    burnerFlameCore.scale.set(0.001, 0.001, 0.001);
+                    burnerFlameOuter.scale.set(0.001, 0.001, 0.001);
+                    const pLight = scene.getObjectByName("burnerLight");
+                    if(pLight) pLight.intensity = 0;
+                }
+
+                // Fumes animation
+                if (fumeParticles && fumeParticles.mesh.material.opacity > 0.01) {
+                    const positions = fumeParticles.mesh.geometry.attributes.position.array;
+                    for(let i=0; i<500; i++) {
+                        positions[i*3+1] += 0.04 + Math.random()*0.02; // Move up
+                        positions[i*3] += (Math.random()-0.5)*0.05; // Drift wide
+                        positions[i*3+2] += (Math.random()-0.5)*0.05;
+                        
+                        // Reset to emitter if too high
+                        if (positions[i*3+1] > fumeParticles.emitterY + 5.0) {
+                            positions[i*3+1] = fumeParticles.emitterY + Math.random()*0.5; 
+                            positions[i*3] = fumeParticles.emitterX + (Math.random()-0.5)*0.5;
+                            positions[i*3+2] = fumeParticles.emitterZ + (Math.random()-0.5)*0.5;
+                        }
+                    }
+                    fumeParticles.mesh.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+
+    <!-- LOGIC, AI CACHE & TIMELINE -->
+    <script>
+        let timerInterval;
+        let elapsedMs = 0;
+        let totalDurationMs = 12000; 
+        let tipInterval;
+
+        const LOADING_TIPS = [
+            "Thermal decomposition often absorbs heat (endothermic).",
+            "Toxic gases like NO₂ should ideally be vented in a fume hood.",
+            "Magnesium burns with a dazzling white flame due to intense exothermic oxidation.",
+            "Querying Gemini Physics Core for stoichiometric accuracy...",
+            "Lead(II) oxide (PbO) is reddish-brown when hot, yellow when cold."
+        ];
+
+        // Format chemical equation with subscripts
+        function formatChemicalSubscripts(eq) {
+            return eq.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>');
+        }
+
+        async function initSimulationData() {
+            const params = new URLSearchParams(window.location.search);
+            let reactants = [];
+            if(params.get('r1')) reactants.push(params.get('r1'));
+            if(params.get('r2')) reactants.push(params.get('r2'));
+            const condition = params.get('cond') || 'Heat';
+            
+            if(reactants.length === 0) {
+                document.getElementById('explanation-display').innerHTML = `<span class="text-rose-400">Error: No reactants provided. Return to Setup.</span>`;
+                return;
+            }
+
+            // Apparatus Selection based on Reactant (Mg = Crucible, PbNO3 = Boiling Tube)
+            const isMg = reactants.some(r => r.toLowerCase().includes('mg') || r.toLowerCase().includes('magnesium'));
+            if(isMg) {
+                buildCrucibleSetup();
+            } else {
+                buildBoilingTubeSetup();
+            }
+
+            document.getElementById('reactants-display').innerHTML = reactants.map(r => `<span class="bg-cyan-950/60 border border-cyan-800 px-3 py-1.5 rounded-lg text-cyan-300 font-bold text-sm tracking-wide shadow-inner">${r}</span>`).join(' <span class="text-slate-500 font-bold text-lg">+</span> ');
+
+            const aiOverlay = document.getElementById('ai-loading');
+            aiOverlay.classList.remove('hidden');
+
+            let tipIdx = 0;
+            const tipEl = document.getElementById('ai-fact-tip');
+            tipEl.innerText = LOADING_TIPS[0];
+            tipInterval = setInterval(() => {
+                tipIdx = (tipIdx + 1) % LOADING_TIPS.length;
+                tipEl.style.opacity = 0;
+                setTimeout(() => {
+                    tipEl.innerText = LOADING_TIPS[tipIdx];
+                    tipEl.style.opacity = 1;
+                }, 500);
+            }, 3000);
+
+            try {
+                const cacheKey = 'dream_xr_reaction_' + reactants.slice().sort().join('_').toLowerCase() + '_' + condition.toLowerCase();
+                let resultData = null;
+                const cachedResponse = localStorage.getItem(cacheKey);
+
+                if (cachedResponse) {
+                    console.log("Loaded reaction from local database cache:", cacheKey);
+                    resultData = JSON.parse(cachedResponse);
+                } 
+                else {
+                    const apiKey = (typeof CONFIG !== 'undefined' && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== "PASTE_YOUR_API_KEY_HERE") ? CONFIG.GEMINI_API_KEY : "";
+                    
+                    if (!apiKey) {
+                        // Offline Hardcoded fallback
+                        if(isMg) {
+                            resultData = {
+                                "reactionOccurs": true,
+                                "equation": "2Mg(s) + O₂(g) ⎯⎯Δ⎯→ 2MgO(s)",
+                                "explanation": "Magnesium burns in air with a blinding, dazzling white flame to form solid Magnesium Oxide (MgO) powder ash. This is an exothermic combination and oxidation reaction.",
+                                "initial": { "hasSolid": true, "solidColorHex": "#94a3b8" },
+                                "final": { "solidColorHex": "#ffffff", "fumes": { "present": true, "colorHex": "#ffffff" } },
+                                "observations": { "color": "Silver → White ash", "gas": "White MgO smoke", "residue": "Magnesium Oxide (MgO)", "thermal": "Combustion & Oxidation" }
+                            };
+                        } else {
+                            resultData = {
+                                "reactionOccurs": true,
+                                "equation": "2Pb(NO₃)₂(s) ⎯⎯Δ⎯→ 2PbO(s) + 4NO₂(g)↑ + O₂(g)↑",
+                                "explanation": "Thermal decomposition of lead(II) nitrate is an endothermic reaction. The white crystals break down under intense heat, releasing pungent reddish-brown nitrogen dioxide gas and oxygen. The remaining residue is Lead(II) oxide (PbO), which is reddish-brown when hot and canary yellow when cold.",
+                                "initial": { "hasSolid": true, "solidColorHex": "#ffffff" },
+                                "final": { "solidColorHex": "#eab308", "fumes": { "present": true, "colorHex": "#9a3412" } },
+                                "observations": { "color": "White → Yellow residue", "gas": "Reddish-brown NO₂", "residue": "Lead(II) oxide (PbO)", "thermal": "Thermal Decomposition" }
+                            };
+                        }
+                    } else {
+                        // Real API Call
+                        const prompt = `Simulate heating (Burner) of: [${reactants.join(', ')}]. Provide valid JSON: { "reactionOccurs": true, "equation": "balanced eq with state symbols", "explanation": "detailed sci text", "initial": {"solidColorHex": "#hex"}, "final": {"solidColorHex": "#hex", "fumes": {"present": true, "colorHex": "#hex"}}, "observations": {"color": "desc", "gas": "desc", "residue": "name", "thermal": "Reaction type (e.g. Combustion or Thermal Decomposition)"} }`;
+                        
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
+                        });
+                        
+                        const data = await response.json();
+                        if(data.error) throw new Error(data.error.message);
+                        let rawJson = data.candidates[0].content.parts[0].text;
+                        rawJson = rawJson.replace(/^```json\n?/, '').replace(/```$/, '').trim();
+                        resultData = JSON.parse(rawJson);
+
+                        localStorage.setItem(cacheKey, JSON.stringify(resultData));
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                currentReactionData = resultData;
+                
+                // Initialize 3D Colors
+                populateGranules(resultData.initial.solidColorHex.replace('#', '0x'));
+                if (resultData.final && resultData.final.solidColorHex) {
+                    targetColorStart = new THREE.Color(resultData.initial.solidColorHex);
+                    targetColorEnd = new THREE.Color(resultData.final.solidColorHex);
+                }
+                
+                // Populate Static UI
+                document.getElementById('equation-display').innerHTML = formatChemicalSubscripts(resultData.equation) || "No Reaction";
+                document.getElementById('obs-color').innerText = resultData.observations?.color || "N/A";
+                document.getElementById('obs-gas').innerText = resultData.observations?.gas || "None";
+                document.getElementById('obs-residue').innerText = resultData.observations?.residue || "N/A";
+                document.getElementById('obs-thermal').innerText = resultData.observations?.thermal || "N/A";
+                
+                // Dynamic Stage Name Update
+                document.getElementById('stage-2-text').innerText = resultData.observations?.thermal || "Reaction Process";
+
+                document.getElementById('explanation-display').innerHTML = resultData.explanation;
+
+                clearInterval(tipInterval);
+                aiOverlay.classList.add('hidden');
+                
+                startTimelineSequence();
+
+            } catch (err) {
+                console.error(err);
+                clearInterval(tipInterval);
+                aiOverlay.classList.add('hidden');
+                document.getElementById('explanation-display').innerHTML = `<span class="text-rose-400 font-bold">API Engine Error: ${err.message}</span>`;
+            }
+        }
+
+        function startTimelineSequence() {
+            isSimulating = true;
+            elapsedMs = 0;
+            document.getElementById('stop-btn').classList.remove('hidden');
+
+            burnerFlameCore.scale.set(1, 1, 1);
+            burnerFlameOuter.scale.set(1, 1, 1);
+            
+            updateStageUI(1);
+
+            timerInterval = setInterval(() => {
+                elapsedMs += 50;
+                simProgress = Math.min(elapsedMs / totalDurationMs, 1.0);
+                
+                const s = Math.floor(elapsedMs / 1000);
+                const ms = Math.floor((elapsedMs % 1000) / 100);
+                document.getElementById('sim-timer').innerText = `00:${s.toString().padStart(2, '0')}.${ms}`;
+
+                const temp = 25 + (simProgress * (currentApparatusType === 'crucible' ? 700 : 425));
+                document.getElementById('live-temp-display').innerText = `${temp.toFixed(1)} °C`;
+
+                if (simProgress > 0.3 && simProgress < 0.35) {
+                    updateStageUI(2);
+                    if (currentReactionData.final.fumes && currentReactionData.final.fumes.present) {
+                        fumeParticles.mesh.material.color.setHex(currentReactionData.final.fumes.colorHex.replace('#', '0x'));
+                        fumeParticles.mesh.material.opacity = 0.85; 
+                        
+                        // If Mg combustion, make it additive bright smoke
+                        if(currentReactionData.final.fumes.colorHex === '#ffffff' || currentApparatusType === 'crucible') {
+                            fumeParticles.mesh.material.blending = THREE.AdditiveBlending;
+                            fumeParticles.mesh.material.opacity = 0.95;
+                        } else {
+                            fumeParticles.mesh.material.blending = THREE.NormalBlending;
+                        }
+                    }
+                }
+
+                if (simProgress > 0.85 && simProgress < 0.9) {
+                    updateStageUI(3);
+                }
+
+                if (simProgress >= 1.0) {
+                    clearInterval(timerInterval);
+                    isSimulating = false; 
+                    document.getElementById('stop-btn').classList.add('hidden');
+                    if(fumeParticles) fumeParticles.mesh.material.opacity = 0.1;
+                    
+                    // Turn off burner
+                    burnerFlameCore.scale.set(0.001, 0.001, 0.001);
+                    burnerFlameOuter.scale.set(0.001, 0.001, 0.001);
+                    const pLight = scene.getObjectByName("burnerLight");
+                    if(pLight) pLight.intensity = 0;
+                }
+            }, 50);
+        }
+
+        function stopSimulation() {
+            clearInterval(timerInterval);
+            isSimulating = false;
+            document.getElementById('stop-btn').classList.add('hidden');
+            document.getElementById('sim-timer').innerText = `Stopped`;
+            
+            burnerFlameCore.scale.set(0.001, 0.001, 0.001);
+            burnerFlameOuter.scale.set(0.001, 0.001, 0.001);
+            if(fumeParticles) fumeParticles.mesh.material.opacity = 0;
+            const pLight = scene.getObjectByName("burnerLight");
+            if(pLight) pLight.intensity = 0;
+        }
+
+        function updateStageUI(stageNum) {
+            const s1 = document.getElementById('stage-1');
+            const s2 = document.getElementById('stage-2');
+            const s3 = document.getElementById('stage-3');
+            
+            [s1, s2, s3].forEach(s => {
+                s.querySelector('div').classList.remove('bg-cyan-500', 'shadow-[0_0_12px_rgba(6,182,212,0.6)]');
+                s.querySelector('div').classList.add('bg-slate-800');
+                s.querySelector('span:last-child').classList.replace('text-cyan-400', 'text-slate-400');
+                s.querySelector('span:last-child').classList.remove('drop-shadow');
+            });
+
+            let active = stageNum === 1 ? s1 : (stageNum === 2 ? s2 : s3);
+            active.querySelector('div').classList.replace('bg-slate-800', 'bg-cyan-500');
+            active.querySelector('div').classList.add('shadow-[0_0_12px_rgba(6,182,212,0.6)]');
+            active.querySelector('span:last-child').classList.replace('text-slate-400', 'text-cyan-400');
+            active.querySelector('span:last-child').classList.add('drop-shadow');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            animate3D(0);
+            lucide.createIcons();
+            initSimulationData();
+        });
+    </script>
+</body>
+</html>

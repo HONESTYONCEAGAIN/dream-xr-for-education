@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Simulator | Chemistry Lab - Dream XR</title>
+    
+    <!-- Load Configuration for API Key -->
+    <script src="../secrets/config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 1.5s infinite linear'
+                    },
+                    keyframes: {
+                        shimmer: {
+                            '100%': { transform: 'translateX(100%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Ambient Background Pattern */
+        .bg-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0);
+            background-size: 30px 30px;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.5); }
+        
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- HARDCODED SIDEBAR (Guarantees Logo & Links render correctly on local/file server) -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)] h-full">
+        <!-- Logo Area -->
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../index.html'>
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            
+            <!-- Active State: Chemistry Lab -->
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[inset_0_0_15px_rgba(34,211,238,0.1)] transition-all' href='chemistry.html'>
+                <i data-lucide="flask-conical" class="w-5 h-5 animate-pulse-fast"></i>
+                <span class="font-bold text-sm">Chemistry Lab</span>
+            </a>
+            
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../physics.html'>
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../bio.html'>
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            <a class='sidebar-link flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../aitutor.html'>
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-fast shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+            </a>
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../labhistory.html'>
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Account</p>
+            <a class='sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group' href='../settings.html'>
+                <i data-lucide="settings" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-6 lg:px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <a class='w-10 h-10 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center border border-white/10 transition-colors cursor-pointer' href='../index.html' title='Back to Dashboard'>
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-slate-300"></i>
+                </a>
+                <div class="w-12 h-12 bg-cyan-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/30 ml-2">
+                    <i data-lucide="flask-conical" class="w-6 h-6 text-cyan-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+                        3D Reaction Simulator
+                        <span class="text-[10px] font-bold text-cyan-300 bg-cyan-950 border border-cyan-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-block">NCERT Verified</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 font-medium">Kinetic Simulation & Photorealistic Laboratory Engine</p>
+                </div>
+            </div>
+
+            <!-- Simulator Clock -->
+            <div class="bg-black/50 border border-white/10 px-6 py-2 rounded-full flex items-center gap-3 font-mono shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span id="sim-timer" class="text-cyan-400 font-bold text-lg tracking-widest">00:00:00</span>
+            </div>
+
+            <!-- Right side: Notifications & Profile -->
+            <div class="flex items-center gap-6 ml-auto">
+                <a class='relative p-2 text-slate-400 hover:text-white transition-colors cursor-pointer block' href='../notifications.html'>
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </a>
+                <a class='w-11 h-11 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform ml-2 block' href='../profile.html'>
+                    <i data-lucide="user" class="w-5 h-5 text-purple-300"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- LAB INTERFACE (Scrollable) -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+            
+            <div class="max-w-7xl mx-auto w-full flex flex-col gap-6 pb-12">
+                
+                <!-- TOP ROW: 3D Simulation & Right Panel (Reactants + Equation) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[480px] lg:min-h-[520px]">
+                    
+                    <!-- Left/Center: 360° Pristine 3D Conical Flask Viewer -->
+                    <div class="col-span-1 lg:col-span-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] relative overflow-hidden flex flex-col shadow-xl cursor-move group">
+                        
+                        <div class="absolute top-6 left-6 z-20 flex flex-col gap-2 pointer-events-none">
+                            <div class="text-slate-300 text-xs sm:text-sm font-bold flex items-center gap-2 drop-shadow-md bg-slate-950/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-lg">
+                                <i data-lucide="mouse-pointer-2" class="w-4 h-4 text-cyan-400"></i> Drag to rotate 360° | Scroll to Zoom
+                            </div>
+                            <div class="text-xs font-mono text-amber-300 bg-slate-950/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-amber-500/30 flex items-center gap-1.5 w-fit shadow-lg">
+                                <i data-lucide="thermometer" class="w-3.5 h-3.5 text-amber-400"></i>
+                                <span id="env-temp-label">25.0 °C (Room Temp)</span>
+                            </div>
+                        </div>
+
+                        <!-- Mini Toolbar -->
+                        <div class="absolute top-6 right-6 z-20 flex items-center gap-2 bg-slate-950/70 border border-white/10 backdrop-blur-md p-1.5 rounded-xl shadow-lg">
+                            <button onclick="controls.reset()" class="p-2 text-slate-400 hover:text-cyan-400 rounded-lg hover:bg-white/5 transition-colors" title="Reset View">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <!-- Three.js Canvas Container -->
+                        <div id="three-container" class="absolute inset-0 w-full h-full"></div>
+                    </div>
+
+                    <!-- Right: Dynamic Inputs & Setup Panel -->
+                    <div class="col-span-1 lg:col-span-4 flex flex-col gap-6">
+                        
+                        <div class="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-xl flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+                            <div class="flex items-center justify-between mb-4 shrink-0">
+                                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                    <i data-lucide="test-tubes" class="text-cyan-400 w-5 h-5"></i> Setup Reaction
+                                </h3>
+                                <span class="text-[10px] font-mono text-cyan-400/80 bg-cyan-950/70 border border-cyan-800/60 px-2.5 py-0.5 rounded-md font-bold uppercase">Virtual Hub</span>
+                            </div>
+
+                            <!-- Fast Class 10 NCERT Quick Presets -->
+                            <div class="mb-5 space-y-2 shrink-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class 10 NCERT Quick Presets:</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="loadPreset('pbno3', 'Heat')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200 transition-all shadow-sm">
+                                        🔥 Pb(NO₃)₂ Δ
+                                    </button>
+                                    <button type="button" onclick="loadPreset('mg_o2', 'Heat')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200 transition-all shadow-sm">
+                                        ✨ Mg + O₂
+                                    </button>
+                                    <button type="button" onclick="loadPreset('golden_rain', 'None')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200 transition-all shadow-sm">
+                                        🟡 Pb(NO₃)₂ + KI
+                                    </button>
+                                    <button type="button" onclick="loadPreset('feso4', 'Heat')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200 transition-all shadow-sm">
+                                        🟢 FeSO₄ Δ
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Reactant Count & Inputs -->
+                            <div class="flex-1 flex flex-col gap-3">
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider">Reactants</label>
+                                    <div class="relative w-36">
+                                        <select id="reactant-count" class="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-400 appearance-none cursor-pointer" onchange="updateReactantFields()">
+                                            <option value="1" class="bg-slate-900">1 Reactant</option>
+                                            <option value="2" class="bg-slate-900" selected>2 Reactants</option>
+                                            <option value="3" class="bg-slate-900">3 Reactants</option>
+                                            <option value="4" class="bg-slate-900">4 Reactants</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-400">
+                                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="reactants-list" class="flex flex-col gap-3 relative">
+                                    <!-- Populated dynamically via JS -->
+                                </div>
+
+                                <!-- Reaction Conditions -->
+                                <div class="mt-4">
+                                    <label class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 block">Conditions / Energy Source</label>
+                                    <div class="relative">
+                                        <select id="reaction-condition" class="w-full bg-black/40 border border-white/10 focus:border-cyan-400 rounded-xl px-4 py-3 text-white transition-all outline-none font-medium appearance-none cursor-pointer text-sm" onchange="updateConditionLabel()">
+                                            <option value="None" class="bg-slate-900 text-white">None (Room Temp ~25°C)</option>
+                                            <option value="Heat" class="bg-slate-900 text-white">Heat (Bunsen Burner Δ)</option>
+                                            <option value="Sunlight" class="bg-slate-900 text-white">Sunlight (hν Photo-decomposition)</option>
+                                            <option value="Electricity" class="bg-slate-900 text-white">Electricity (Electrolysis)</option>
+                                            <option value="Catalyst" class="bg-slate-900 text-white">Catalyst (MnO₂ / KI)</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Buttons (Redirection Handler) -->
+                            <div class="mt-6 shrink-0 pt-4 border-t border-white/10">
+                                <button id="react-btn" onclick="triggerLabRedirection()" class="group relative overflow-hidden w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                                    <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover:animate-shimmer"></div>
+                                    <i data-lucide="play" id="react-btn-icon" class="w-5 h-5 fill-current relative z-10 transition-all"></i> 
+                                    <span class="relative z-10 font-black text-sm" id="react-btn-text">Simulate Reaction</span>
+                                </button>
+                                <button onclick="clearLab()" class="w-full py-3 mt-3 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl font-semibold transition-colors border border-white/5 cursor-pointer">
+                                    Reset Lab
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- BOTTOM ROW: Lab Explanation -->
+                <div class="bg-gradient-to-br from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-cyan-500/20 rounded-[2rem] p-7 shadow-xl relative overflow-hidden shrink-0 space-y-3">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                        <i data-lucide="sparkles" class="w-32 h-32 text-cyan-400"></i>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-cyan-400 flex items-center gap-2 border-b border-white/10 pb-4">
+                        <i data-lucide="book-open" class="w-5 h-5"></i> Experimental Setup & Routing
+                    </h3>
+
+                    <div class="text-slate-300 leading-relaxed text-sm sm:text-base pr-4 font-normal">
+                        <div class="opacity-70 leading-relaxed">
+                            Welcome to the Virtual Chemistry Hub. Configure your chemical reactants and select a specific energy condition. When you click <strong>Simulate Reaction</strong>, the engine will bundle your parameters and seamlessly transport you to the specialized laboratory environment (e.g., Burner Apparatus, Sunlight Chamber, or Electrolysis Cell) to observe the physical simulation.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        // Store timeout globally so we can cancel it on Reset
+        window.redirectTimeout = null;
+
+        // --- REACTANT UI LOGIC (WITH AUTOCOMPLETE) ---
+        const COMMON_CHEMICALS = [
+            "Lead(II) Nitrate - Pb(NO₃)₂", "Magnesium - Mg", "Oxygen - O₂",
+            "Potassium Iodide - KI", "Ferrous Sulphate - FeSO₄", "Water - H₂O",
+            "Hydrochloric Acid - HCl", "Sodium Hydroxide - NaOH", "Calcium Carbonate - CaCO₃",
+            "Manganese Dioxide - MnO₂"
+        ];
+
+        function updateReactantFields() {
+            const count = parseInt(document.getElementById('reactant-count').value);
+            const list = document.getElementById('reactants-list');
+            list.innerHTML = '';
+            
+            for(let i=1; i<=count; i++) {
+                const placeholder = i===1 ? "e.g., Lead(II) Nitrate" : (i===2 ? "e.g., Potassium Iodide" : "e.g., Catalyst");
+                const div = document.createElement('div');
+                div.className = "relative";
+                div.innerHTML = `
+                    <input type="text" id="reactant-${i}" placeholder="${placeholder}" 
+                        autocomplete="off"
+                        oninput="showSuggestions(this, ${i})"
+                        onfocus="showSuggestions(this, ${i})"
+                        class="w-full bg-black/40 border border-white/10 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 transition-all outline-none font-medium text-sm shadow-inner">
+                    <div id="ac-dropdown-${i}" class="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-44 overflow-y-auto hidden"></div>
+                `;
+                list.appendChild(div);
+                
+                if (i < count) {
+                    const plus = document.createElement('div');
+                    plus.className = 'flex justify-center text-slate-500 py-0.5';
+                    plus.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i>';
+                    list.appendChild(plus);
+                }
+            }
+            lucide.createIcons();
+        }
+
+        function showSuggestions(inputEl, index) {
+            const query = inputEl.value.trim().toLowerCase();
+            const dropdown = document.getElementById(`ac-dropdown-${index}`);
+            dropdown.innerHTML = '';
+
+            const matches = COMMON_CHEMICALS.filter(item => !query || item.toLowerCase().includes(query));
+            if (matches.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            matches.slice(0, 5).forEach(item => {
+                const opt = document.createElement('div');
+                opt.className = "p-2.5 px-4 hover:bg-slate-800 cursor-pointer text-xs text-slate-200 border-b border-slate-800/60 last:border-none flex items-center justify-between transition-colors";
+                opt.innerHTML = `<span>${item}</span> <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-cyan-400 opacity-60"></i>`;
+                opt.onclick = () => {
+                    inputEl.value = item.split(' - ')[0];
+                    dropdown.classList.add('hidden');
+                };
+                dropdown.appendChild(opt);
+            });
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#reactants-list')) {
+                document.querySelectorAll('[id^="ac-dropdown-"]').forEach(d => d.classList.add('hidden'));
+            }
+        });
+
+        function loadPreset(comp, cond) {
+            const countSel = document.getElementById('reactant-count');
+            if (comp === 'pbno3') { countSel.value = "1"; updateReactantFields(); document.getElementById('reactant-1').value = "Lead(II) Nitrate"; } 
+            else if (comp === 'mg_o2') { countSel.value = "2"; updateReactantFields(); document.getElementById('reactant-1').value = "Magnesium"; document.getElementById('reactant-2').value = "Oxygen"; } 
+            else if (comp === 'golden_rain') { countSel.value = "2"; updateReactantFields(); document.getElementById('reactant-1').value = "Lead(II) Nitrate"; document.getElementById('reactant-2').value = "Potassium Iodide"; } 
+            else if (comp === 'feso4') { countSel.value = "1"; updateReactantFields(); document.getElementById('reactant-1').value = "Ferrous Sulphate"; }
+            
+            document.getElementById('reaction-condition').value = cond;
+            updateConditionLabel();
+        }
+
+        function updateConditionLabel() {
+            const cond = document.getElementById('reaction-condition').value;
+            const label = document.getElementById('env-temp-label');
+            if (cond === 'Heat') label.innerText = "Heating (Bunsen Burner Configured)";
+            else if (cond === 'Sunlight') label.innerText = "Sunlight (UV Chamber Configured)";
+            else if (cond === 'Electricity') label.innerText = "Electricity (Electrolysis Cell)";
+            else label.innerText = "25.0 °C (Room Temp)";
+        }
+
+        function clearLab() {
+            // Cancel any pending redirection
+            if (window.redirectTimeout) {
+                clearTimeout(window.redirectTimeout);
+                window.redirectTimeout = null;
+            }
+
+            // Reset Inputs
+            const count = parseInt(document.getElementById('reactant-count').value);
+            for (let i = 1; i <= count; i++) {
+                const el = document.getElementById(`reactant-${i}`);
+                if (el) el.value = '';
+            }
+            document.getElementById('reaction-condition').value = "None";
+            updateConditionLabel();
+            
+            // Reset Button State
+            const btn = document.getElementById('react-btn');
+            const btnText = document.getElementById('react-btn-text');
+            const btnIcon = document.getElementById('react-btn-icon');
+
+            btn.classList.remove('pointer-events-none');
+            btnIcon.setAttribute('data-lucide', 'play');
+            btnIcon.classList.remove('animate-spin');
+            btnText.innerText = "Simulate Reaction";
+            lucide.createIcons();
+
+            controls.reset();
+        }
+
+        // --- DIRECT REDIRECTION ENGINE ---
+        function triggerLabRedirection() {
+            const count = parseInt(document.getElementById('reactant-count').value);
+            const reactants = [];
+            for (let i = 1; i <= count; i++) {
+                const el = document.getElementById(`reactant-${i}`);
+                if (el && el.value.trim()) reactants.push(el.value.trim());
+            }
+            const condition = document.getElementById('reaction-condition').value;
+
+            if (reactants.length === 0) {
+                alert("Please enter or select at least one chemical reactant!");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            reactants.forEach((r, idx) => params.append(`r${idx + 1}`, r));
+            params.append('cond', condition);
+            params.append('autoStart', 'true');
+
+            let expName = reactants.join(' + ');
+            if (condition === 'Heat') expName = `Heating of ${reactants[0]}`;
+            else if (condition === 'Sunlight') expName = `Photolysis of ${reactants[0]}`;
+            else if (condition === 'Electricity') expName = `Electrolysis of ${reactants[0]}`;
+            params.append('name', expName);
+
+            // Determine Target Specialized HTML file locally
+            let target = 'general(chem_lab).html';
+            if (condition === 'Heat') target = 'burner(chem_lab).html';
+            else if (condition === 'Sunlight') target = 'sunlight(chem_lab).html';
+            else if (condition === 'Electricity') target = 'electricity(chem_lab).html';
+            else if (condition === 'None' || condition === 'Catalyst') target = 'general(chem_lab).html';
+
+            // Button Loading State
+            const btn = document.getElementById('react-btn');
+            const btnText = document.getElementById('react-btn-text');
+            const btnIcon = document.getElementById('react-btn-icon');
+
+            btn.classList.add('pointer-events-none');
+            btnIcon.setAttribute('data-lucide', 'loader-2');
+            btnIcon.classList.add('animate-spin');
+            btnText.innerText = "Entering Laboratory...";
+            lucide.createIcons();
+
+            // Perform redirection with clearable timeout
+            window.redirectTimeout = setTimeout(() => {
+                window.location.href = `${target}?${params.toString()}`;
+            }, 800);
+        }
+
+        // --- PRISTINE THREE.JS GLASSHOUSE SCENE (NO LIQUID Z-FIGHTING) ---
+        const container = document.getElementById('three-container');
+        let scene, camera, renderer, controls, flaskGroup;
+
+        function createStudioEnvMap(glRenderer) {
+            const sceneEnv = new THREE.Scene();
+            sceneEnv.background = new THREE.Color(0x0a101d); // Dark studio
+
+            // Overhead softbox panel
+            const sbMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+            sbMesh.position.set(0, 12, 0);
+            sbMesh.rotation.x = Math.PI / 2;
+            sceneEnv.add(sbMesh);
+
+            // Cyan fill panel
+            const cyanMesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 12), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide }));
+            cyanMesh.position.set(-10, 5, -4);
+            cyanMesh.lookAt(0, 0, 0);
+            sceneEnv.add(cyanMesh);
+
+            const pmremGenerator = new THREE.PMREMGenerator(glRenderer);
+            pmremGenerator.compileEquirectangularShader();
+            const envTexture = pmremGenerator.fromScene(sceneEnv).texture;
+            pmremGenerator.dispose();
+            return envTexture;
+        }
+
+        function init3DScene() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 2.0, 14);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.3;
+            container.appendChild(renderer.domElement);
+
+            scene.environment = createStudioEnvMap(renderer);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false;
+            controls.minDistance = 6;
+            controls.maxDistance = 22;
+            controls.target.set(0, 0, 0);
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 1.0;
+
+            // Studio Lighting Setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+            scene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+            keyLight.position.set(5, 10, 7);
+            scene.add(keyLight);
+
+            const rimLightCyan = new THREE.DirectionalLight(0x22d3ee, 1.6);
+            rimLightCyan.position.set(-6, 8, -5);
+            scene.add(rimLightCyan);
+
+            flaskGroup = new THREE.Group();
+            scene.add(flaskGroup);
+            flaskGroup.position.y = -1.0;
+
+            // PURE PRISTINE FLASK GEOMETRY (Smooth curve with proper normals)
+            const points = [
+                new THREE.Vector2(0, 0), new THREE.Vector2(2.5, 0), new THREE.Vector2(2.6, 0.2),   
+                new THREE.Vector2(0.9, 3.5), new THREE.Vector2(0.9, 5.0), new THREE.Vector2(1.0, 5.0),   
+                new THREE.Vector2(1.0, 5.2), new THREE.Vector2(0.8, 5.2), new THREE.Vector2(0.8, 3.5),   
+                new THREE.Vector2(2.4, 0.3), new THREE.Vector2(2.4, 0.1), new THREE.Vector2(0, 0.1)     
+            ];
+
+            const flaskGeo = new THREE.LatheGeometry(points, 96);
+            flaskGeo.computeVertexNormals();
+            flaskGeo.translate(0, -2.5, 0);
+
+            // Valid PBR Glass Material (NO specularIntensity, thickness, or specularColor warnings)
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                metalness: 0.1,
+                roughness: 0.03,
+                transmission: 0.96,
+                ior: 1.517, // Borosilicate IOR
+                transparent: true,
+                opacity: 0.9,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.04,
+                depthWrite: true,
+                side: THREE.FrontSide // FrontSide stops the inner/outer Z-fighting on Intel Windows GPUs
+            });
+
+            const flaskMesh = new THREE.Mesh(flaskGeo, glassMaterial);
+            flaskGroup.add(flaskMesh);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- SIMULATOR CLOCK ---
+        function startSimClock() {
+            const clockEl = document.getElementById('sim-timer');
+            setInterval(() => {
+                const now = new Date();
+                const hrs = String(now.getHours()).padStart(2, '0');
+                const mins = String(now.getMinutes()).padStart(2, '0');
+                const secs = String(now.getSeconds()).padStart(2, '0');
+                clockEl.innerText = `${hrs}:${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            init3DScene();
+            animate();
+            startSimClock();
+            updateReactantFields();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

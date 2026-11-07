@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biology 3D Explorer | Dream XR</title>
+    
+    <!-- Load Configuration Files -->
+    <script src="secrets/firebase-config.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'float-delayed': 'float 4s ease-in-out 2s infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 1.5s infinite linear',
+                        'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'dropdown-slide': 'dropdownSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        shimmer: {
+                            '100%': { transform: 'translateX(100%)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translateY(30px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: 0 },
+                            '100%': { opacity: 1 }
+                        },
+                        dropdownSlide: {
+                            '0%': { opacity: 0, transform: 'scale(0.95) translateY(-10px)' },
+                            '100%': { opacity: 1, transform: 'scale(1) translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body {
+            background-color: #020617; 
+            color: #ffffff;
+        }
+
+        .bg-pattern { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0); background-size: 30px 30px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.5); }
+        
+        .glass-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 10px 30px -10px rgba(168, 85, 247, 0.2);
+            transform: translateY(-4px);
+        }
+
+        /* Scroll-triggered cascade animations */
+        .scroll-animate {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .scroll-animate.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Animated Dropdown State */
+        .dropdown-open {
+            display: block !important;
+            animation: dropdownSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-purple-500/30 flex h-screen hidden relative" id="app-body">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none animate-float"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-pink-700/15 rounded-full blur-[120px] z-0 pointer-events-none animate-float-delayed"></div>
+
+    <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:scale-105 transition-transform cursor-pointer">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            <a href="chemistry.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="flask-conical" class="w-5 h-5 group-hover:text-cyan-400 transition-colors animate-float"></i>
+                <span class="font-semibold text-sm">Chemistry Lab</span>
+            </a>
+            <a href="physics.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="atom" class="w-5 h-5 group-hover:text-orange-400 transition-colors animate-spin-slow"></i>
+                <span class="font-semibold text-sm">Physics Engine</span>
+            </a>
+            <a href="bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[inset_0_0_15px_rgba(168,85,247,0.1)] transition-all">
+                <i data-lucide="dna" class="w-5 h-5 animate-pulse"></i>
+                <span class="font-bold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-fast shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+            </a>
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Account</p>
+            <a href="plans.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="credit-card" class="w-5 h-5 group-hover:text-yellow-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Plans & Upgrade</span>
+            </a>
+            <a href="profile.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="user" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">My Profile</span>
+            </a>
+        </div>
+
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0 z-20">
+            <div class="flex items-center gap-4 animate-fade-in opacity-0" style="animation-fill-mode: forwards;">
+                <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center border border-purple-500/30">
+                    <i data-lucide="dna" class="w-6 h-6 text-purple-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">
+                        Biology Chapters
+                    </h2>
+                    <p class="text-xs text-slate-400 font-medium mt-0.5">Select a topic to explore interactive 3D anatomy</p>
+                </div>
+            </div>
+
+            <!-- Right side: Search, Class Dropdown, Notifications & Profile -->
+            <div class="flex items-center gap-6 ml-auto animate-fade-in opacity-0" style="animation-fill-mode: forwards; animation-delay: 0.1s;">
+                
+                <!-- Dynamic Search Box -->
+                <div class="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-full px-5 py-2.5 w-[300px] focus-within:border-purple-400/50 focus-within:bg-white/10 transition-all shadow-inner">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 mr-3"></i>
+                    <input type="text" id="search-input" oninput="searchModels()" placeholder="Search specimens..." class="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-slate-500 font-medium">
+                </div>
+
+                <!-- Custom Animated Class Selection Dropdown -->
+                <div class="relative" id="class-dropdown-container">
+                    <button onclick="toggleClassDropdown()" id="class-dropdown-btn" class="flex items-center justify-between w-48 bg-slate-800 border border-white/10 rounded-full px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-700 hover:border-purple-400/50 transition-all focus:outline-none shadow-lg backdrop-blur-sm">
+                        <span id="selected-class-text">Class 10</span>
+                        <i data-lucide="chevron-down" id="class-dropdown-arrow" class="w-4 h-4 text-purple-400 transition-transform duration-300"></i>
+                    </button>
+                    <!-- Hidden value to hold the selected class -->
+                    <input type="hidden" id="class-select" value="10">
+                    
+                    <!-- Dropdown Menu -->
+                    <div id="class-dropdown-menu" class="absolute right-0 mt-3 w-56 bg-slate-900/95 border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] hidden z-50 origin-top-right backdrop-blur-xl">
+                        <div class="p-2 flex flex-col gap-1">
+                            <button onclick="selectClassDropdown('9', 'Class 9')" class="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-purple-300 rounded-xl transition-colors">Class 9</button>
+                            <button onclick="selectClassDropdown('10', 'Class 10')" class="w-full text-left px-4 py-2.5 text-sm text-purple-400 font-bold bg-purple-500/10 hover:bg-purple-500/20 rounded-xl transition-colors flex items-center justify-between">
+                                <span>Class 10</span>
+                                <span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>
+                            </button>
+                            <button onclick="selectClassDropdown('11', 'Class 11 (Medical)')" class="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-purple-300 rounded-xl transition-colors">Class 11 (Medical)</button>
+                            <button onclick="selectClassDropdown('12', 'Class 12 (Medical)')" class="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-purple-300 rounded-xl transition-colors">Class 12 (Medical)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="notifications.html" class="relative p-2 text-slate-400 hover:text-white transition-colors block">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </a>
+                <a href="profile.html" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform ml-2 block">
+                    <i data-lucide="user" class="w-5 h-5 text-purple-300"></i>
+                </a>
+            </div>
+        </header>
+
+        <!-- MAIN CHAPTER SELECTION INTERFACE -->
+        <main class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div class="max-w-7xl mx-auto w-full h-full flex flex-col lg:flex-row gap-8 min-h-max pb-10">
+                
+                <!-- Left Panel: Chapter List -->
+                <div class="w-full lg:w-5/12 flex flex-col gap-4" id="chapter-list">
+                    <!-- Chapters will be injected here by JS with scroll animations -->
+                </div>
+
+                <!-- Right Panel: Models & Custom Simulator Link -->
+                <div class="w-full lg:w-7/12 flex flex-col gap-6">
+                    
+                    <!-- Fixed Custom Bio Viewer Banner -->
+                    <div class="bg-gradient-to-br from-purple-900/40 to-pink-900/40 border border-purple-500/30 rounded-[1.5rem] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between shadow-xl shrink-0 animate-slide-up opacity-0" style="animation-fill-mode: forwards; animation-delay: 0.2s;">
+                        <div class="mb-4 md:mb-0 text-center md:text-left">
+                            <h4 class="text-2xl font-extrabold text-purple-400 mb-2 flex items-center justify-center md:justify-start gap-2">
+                                <i data-lucide="activity" class="w-6 h-6"></i> 3D Bio Viewer
+                            </h4>
+                            <p class="text-sm text-slate-300 font-medium">Explore complex biological structures in a fully interactive 3D environment.</p>
+                        </div>
+                        <button onclick="launchGeneralSimulator()" class="group relative overflow-hidden px-6 py-4 bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold rounded-xl transition-transform hover:-translate-y-1 shadow-[0_0_15px_rgba(168,85,247,0.4)] flex items-center gap-2 whitespace-nowrap">
+                            <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover:animate-shimmer"></div>
+                            <span class="relative z-10 flex items-center gap-2">Launch Viewer <i data-lucide="arrow-right" class="w-5 h-5"></i></span>
+                        </button>
+                    </div>
+
+                    <!-- Dynamic Models Panel -->
+                    <div id="models-panel" class="hidden flex-col gap-4">
+                        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2 border-b border-white/10 pb-4 animate-fade-in opacity-0" style="animation-fill-mode: forwards;" id="selected-chapter-title">
+                            <!-- Title injected via JS -->
+                        </h3>
+                        <div id="models-list-container" class="flex flex-col gap-4">
+                            <!-- Models injected via JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Empty State for Models Panel -->
+                    <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-center bg-slate-900/40 border border-white/5 rounded-[2rem] p-10 min-h-[300px] animate-slide-up opacity-0" style="animation-fill-mode: forwards; animation-delay: 0.3s;">
+                        <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-700 shadow-inner">
+                            <i data-lucide="book-open" class="w-10 h-10 text-slate-500"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-300 mb-2">Select a Chapter</h3>
+                        <p class="text-slate-500 max-w-md">Choose a chapter from the left to view highly detailed 3D biological models from your syllabus.</p>
+                    </div>
+
+                    <!-- Watermark at the bottom of the right panel -->
+                    <div class="mt-auto pt-16 flex justify-center w-full relative z-0">
+                        <span class="px-4 py-1.5 bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-[0_0_15px_rgba(236,72,153,0.15)] flex items-center gap-1.5 transition-all hover:scale-105 hover:bg-pink-500/20 cursor-default opacity-80 hover:opacity-100">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Biology Redefined
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        // --- INTERSECTION OBSERVER FOR SCROLL CASCADE ANIMATIONS ---
+        const scrollObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    // Slight stagger effect when scrolling down
+                    setTimeout(() => {
+                        entry.target.classList.add('in-view');
+                    }, index * 50); 
+                    observer.unobserve(entry.target); // Only animate once
+                }
+            });
+        }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' });
+
+        // --- CUSTOM DROPDOWN LOGIC ---
+        function toggleClassDropdown() {
+            const menu = document.getElementById('class-dropdown-menu');
+            const arrow = document.getElementById('class-dropdown-arrow');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('dropdown-open');
+                arrow.classList.add('rotate-180');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('dropdown-open');
+                arrow.classList.remove('rotate-180');
+            }
+        }
+
+        function selectClassDropdown(value, text) {
+            document.getElementById('class-select').value = value;
+            document.getElementById('selected-class-text').innerText = text;
+            
+            // Re-render buttons to highlight active
+            const menuHtml = `
+                <div class="p-2 flex flex-col gap-1">
+                    <button onclick="selectClassDropdown('9', 'Class 9')" class="w-full text-left px-4 py-2.5 text-sm ${value === '9' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-300 hover:bg-purple-500/20 hover:text-purple-300'} rounded-xl transition-colors flex justify-between"><span>Class 9</span> ${value === '9' ? '<span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>' : ''}</button>
+                    <button onclick="selectClassDropdown('10', 'Class 10')" class="w-full text-left px-4 py-2.5 text-sm ${value === '10' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-300 hover:bg-purple-500/20 hover:text-purple-300'} rounded-xl transition-colors flex justify-between"><span>Class 10</span> ${value === '10' ? '<span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>' : ''}</button>
+                    <button onclick="selectClassDropdown('11', 'Class 11 (Medical)')" class="w-full text-left px-4 py-2.5 text-sm ${value === '11' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-300 hover:bg-purple-500/20 hover:text-purple-300'} rounded-xl transition-colors flex justify-between"><span>Class 11 (Medical)</span> ${value === '11' ? '<span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>' : ''}</button>
+                    <button onclick="selectClassDropdown('12', 'Class 12 (Medical)')" class="w-full text-left px-4 py-2.5 text-sm ${value === '12' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-300 hover:bg-purple-500/20 hover:text-purple-300'} rounded-xl transition-colors flex justify-between"><span>Class 12 (Medical)</span> ${value === '12' ? '<span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full uppercase tracking-widest">Active</span>' : ''}</button>
+                </div>
+            `;
+            document.getElementById('class-dropdown-menu').innerHTML = menuHtml;
+
+            toggleClassDropdown();
+            loadChapters(); // Trigger reload
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('class-dropdown-container');
+            const menu = document.getElementById('class-dropdown-menu');
+            if (container && !container.contains(e.target) && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+                menu.classList.remove('dropdown-open');
+                document.getElementById('class-dropdown-arrow').classList.remove('rotate-180');
+            }
+        });
+
+
+        // --- COMPLETE DATABASE OF BIOLOGY MODELS (SKETCHFAB HYBRID) ---
+        const biologySyllabusData = {
+            "9": [
+                {
+                    id: "ch5",
+                    title: "The Fundamental Unit of Life",
+                    desc: "Explore cells, organelles, and basic building blocks of life.",
+                    icon: "microscope",
+                    models: [
+                        { name: "Animal Cell 2.0", embed: "https://sketchfab.com/models/0d9f7f4257224975b2ef83a283709b2f/embed", desc: "Detailed microscopic view of animal cell organelles annotated in English.", icon: "box", isSketchfab: true },
+                        { name: "Plant Cell", embed: "https://sketchfab.com/models/f258c65762e5435c9d58c1aa136b557a/embed", desc: "Eukaryotic plant cell structure featuring rigid cell walls.", icon: "leaf", isSketchfab: true },
+                        { name: "Mitochondria", embed: "https://sketchfab.com/models/f7ba00acafa64106a913fd2a312002a6/embed", desc: "The powerhouse of the cell, responsible for energy (ATP) production.", icon: "zap", isSketchfab: true },
+                        { name: "Golgi Apparatus", embed: "https://sketchfab.com/models/f9a893dac37e43a487bc92e7f828db50/embed", desc: "Complex of vesicles and folded membranes within the cytoplasm.", icon: "layers", isSketchfab: true },
+                        { name: "Structure of Amoeba", embed: "https://sketchfab.com/models/8df6e9add2c24beaa989b3278d96245a/embed", desc: "Unicellular organism structure showing pseudopodia and food vacuoles.", icon: "bug", isSketchfab: true },
+                        { name: "Paramecium", embed: "https://sketchfab.com/models/7cb325a9ac5346be943ef7ddd41de51e/embed", desc: "Single-celled freshwater animal covered with cilia.", icon: "droplet", isSketchfab: true }
+                    ]
+                }
+            ],
+            "10": [
+                {
+                    id: "ch6",
+                    title: "Life Processes",
+                    desc: "Nutrition, respiration, transportation, and excretion systems.",
+                    icon: "activity",
+                    models: [
+                        { name: "Human Heart (Animated)", embed: "https://sketchfab.com/models/a70c0c47fe4b4bbfabfc8f445365d5a4/embed", desc: "Animated realistic 3D anatomy of the beating human heart.", icon: "heart-pulse", isSketchfab: true },
+                        { name: "Human Heart (Static)", embed: "https://sketchfab.com/models/3f8072336ce94d18b3d0d055a1ece089/embed", desc: "Detailed static cross-section of the human heart.", icon: "heart", isSketchfab: true },
+                        { name: "Human Lungs", embed: "https://sketchfab.com/models/ce09f4099a68467880f46e61eb9a3531/embed", desc: "Respiratory system visualization featuring lobes and bronchial trees.", icon: "wind", isSketchfab: true },
+                        { name: "Human Stomach", embed: "https://sketchfab.com/models/e0f1952de7204654ba469c3e887a029b/embed", desc: "Digestive system organ responsible for breaking down food.", icon: "coffee", isSketchfab: true },
+                        { name: "Human Kidney", embed: "https://sketchfab.com/models/e1476ceb1e3b4412af5418eee9c5ed08/embed", desc: "Detailed external and internal structure of the human kidney.", icon: "filter", isSketchfab: true },
+                        { name: "Kidney Cross Section", embed: "https://sketchfab.com/models/d8c0652ddff4474585ccba155c490622/embed", desc: "Anatomical cross-section of the kidney showing medulla and cortex.", icon: "scissors", isSketchfab: true },
+                        { name: "Excretory System", embed: "https://sketchfab.com/models/d5d3b4e21c9040f8b004c2102913a5d2/embed", desc: "Full lower excretory system visualization including kidneys and bladder.", icon: "droplet", isSketchfab: true }
+                    ]
+                },
+                {
+                    id: "ch7",
+                    title: "Control and Coordination",
+                    desc: "Nervous system, brain, and human skeletal structure.",
+                    icon: "brain",
+                    models: [
+                        { name: "Human Brain", embed: "https://sketchfab.com/models/e073c2590bc24daaa7323f4daa5b7784/embed", desc: "Structural view of the human brain including the cerebrum and cerebellum.", icon: "brain", isSketchfab: true },
+                        { name: "Male Skeleton", embed: "https://sketchfab.com/models/3247ca2f8a6346d78142f193eeb59c88/embed", desc: "Anatomically correct complete human skeletal system.", icon: "bone", isSketchfab: true }
+                    ]
+                }
+            ],
+            "11": [],
+            "12": []
+        };
+
+        // --- CUSTOM TOAST FUNCTION ---
+        window.showToast = function(title, message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let iconMarkup = '', textColorClass = '', barColorClass = '';
+            if (type === 'success') { iconMarkup = '<i data-lucide="check-circle" class="w-5 h-5"></i>'; textColorClass = 'text-green-400'; barColorClass = 'bg-green-500'; } 
+            else if (type === 'info') { iconMarkup = '<i data-lucide="info" class="w-5 h-5"></i>'; textColorClass = 'text-blue-400'; barColorClass = 'bg-blue-500'; } 
+            else if (type === 'warning' || type === 'error') { iconMarkup = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>'; textColorClass = 'text-red-400'; barColorClass = 'bg-red-500'; }
+
+            toast.className = `w-80 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform transition-all duration-500 translate-x-full flex items-start gap-3 pointer-events-auto relative overflow-hidden`;
+            const barId = 'progress-' + Date.now() + Math.floor(Math.random() * 1000);
+
+            toast.innerHTML = `
+                <div class="mt-0.5 ${textColorClass} shrink-0">${iconMarkup}</div>
+                <div class="flex-1 pb-1">
+                    <h4 class="text-sm font-bold text-white mb-1">${title}</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500);" class="shrink-0 text-slate-500 hover:text-white transition-colors z-10 relative">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <div id="${barId}" class="absolute bottom-0 left-0 h-1 ${barColorClass}" style="width: 100%; transition: width 5s linear;"></div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            lucide.createIcons();
+            
+            void toast.offsetWidth; // trigger reflow
+            toast.classList.remove('translate-x-full');
+            toast.classList.add('translate-x-0');
+
+            const progressBar = document.getElementById(barId);
+            if (progressBar) setTimeout(() => progressBar.style.width = '0%', 50);
+            setTimeout(() => { if (toast.parentElement) { toast.classList.remove('translate-x-0'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { if(toast.parentElement) toast.remove(); }, 500); } }, 5000);
+        };
+
+        window.launchGeneralSimulator = function() {
+            showToast("Action Required", "Please select a specific 3D model from the chapters below to view it in the simulator.", "warning");
+        };
+
+        // --- UI LOGIC WITH CASCADE ANIMATIONS ---
+        let currentActiveChapterId = null;
+
+        function loadChapters() {
+            const classLevel = document.getElementById('class-select').value;
+            const chapterListEl = document.getElementById('chapter-list');
+            const chapters = biologySyllabusData[classLevel] || [];
+            
+            // Clear current view
+            chapterListEl.innerHTML = '';
+            document.getElementById('models-panel').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+            document.getElementById('search-input').value = ''; 
+            currentActiveChapterId = null;
+
+            if (chapters.length === 0) {
+                chapterListEl.innerHTML = `
+                    <div class="p-6 bg-slate-900/50 rounded-2xl border border-white/5 text-center text-slate-500 animate-fade-in opacity-0" style="animation-fill-mode: forwards;">
+                        <i data-lucide="lock" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p>Content for Class ${classLevel} is currently locked or in development.</p>
+                    </div>`;
+            } else {
+                chapters.forEach((chapter) => {
+                    const card = document.createElement('div');
+                    card.id = `chapter-card-${chapter.id}`;
+                    // Applied scroll-animate instead of hardcoded slide-up
+                    card.className = `chapter-item glass-card p-6 rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-md cursor-pointer group scroll-animate`;
+                    card.onclick = () => selectChapter(chapter.id, classLevel);
+                    
+                    card.innerHTML = `
+                        <div class="flex gap-4 pointer-events-none">
+                            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 group-hover:bg-purple-500/20 group-hover:border-purple-500/30 group-hover:text-purple-400 text-slate-400 transition-colors">
+                                <i data-lucide="${chapter.icon}" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs text-purple-400 font-bold uppercase tracking-wider mb-1">Module</div>
+                                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-purple-300 transition-colors">${chapter.title}</h3>
+                                <p class="text-sm text-slate-400 leading-relaxed">${chapter.desc}</p>
+                            </div>
+                        </div>
+                    `;
+                    chapterListEl.appendChild(card);
+                    // Observe the card so it cascades nicely
+                    scrollObserver.observe(card);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function selectChapter(chapterId, classLevel) {
+            if (currentActiveChapterId) {
+                const prevCard = document.getElementById(`chapter-card-${currentActiveChapterId}`);
+                if(prevCard) {
+                    prevCard.classList.remove('border-purple-500', 'bg-purple-900/20', 'shadow-[0_0_20px_rgba(168,85,247,0.15)]');
+                    prevCard.classList.add('border-white/10', 'bg-slate-900/60');
+                }
+            }
+
+            const newCard = document.getElementById(`chapter-card-${chapterId}`);
+            if(newCard) {
+                newCard.classList.remove('border-white/10', 'bg-slate-900/60');
+                newCard.classList.add('border-purple-500', 'bg-purple-900/20', 'shadow-[0_0_20px_rgba(168,85,247,0.15)]');
+            }
+            currentActiveChapterId = chapterId;
+
+            const chapter = biologySyllabusData[classLevel].find(ch => ch.id === chapterId);
+            const modelsPanel = document.getElementById('models-panel');
+            const modelsListContainer = document.getElementById('models-list-container');
+            const emptyState = document.getElementById('empty-state');
+
+            document.getElementById('selected-chapter-title').innerHTML = `<i data-lucide="dna" class="w-6 h-6 text-purple-400"></i> Available Models: ${chapter.title}`;
+            modelsListContainer.innerHTML = '';
+
+            if (chapter.models && chapter.models.length > 0) {
+                chapter.models.forEach((model) => {
+                    const card = createModelCardHTML(model, false);
+                    modelsListContainer.appendChild(card);
+                    scrollObserver.observe(card); // Trigger scroll animation
+                });
+            } else {
+                modelsListContainer.innerHTML = `
+                    <div class="p-6 bg-black/30 rounded-xl border border-white/5 text-center text-slate-500 animate-fade-in opacity-0" style="animation-fill-mode: forwards;">
+                        <p>No 3D models available for this chapter yet.</p>
+                    </div>`;
+            }
+
+            emptyState.classList.add('hidden');
+            modelsPanel.classList.remove('hidden');
+            modelsPanel.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function searchModels() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const modelsPanel = document.getElementById('models-panel');
+            const modelsListContainer = document.getElementById('models-list-container');
+            const emptyState = document.getElementById('empty-state');
+            const selectedChapterTitle = document.getElementById('selected-chapter-title');
+            
+            if (!query) {
+                document.querySelectorAll('.chapter-item').forEach(item => item.style.display = 'block');
+                if (currentActiveChapterId) {
+                    selectChapter(currentActiveChapterId, document.getElementById('class-select').value);
+                } else {
+                    emptyState.classList.remove('hidden');
+                    modelsPanel.classList.add('hidden');
+                }
+                return;
+            }
+
+            document.querySelectorAll('.chapter-item').forEach(item => item.style.display = 'none');
+            const classLevel = document.getElementById('class-select').value;
+            const allChapters = biologySyllabusData[classLevel] || [];
+            let matchedModels = [];
+            
+            allChapters.forEach(ch => {
+                if (ch.models) {
+                    ch.models.forEach(model => {
+                        if (model.name.toLowerCase().includes(query) || model.desc.toLowerCase().includes(query)) {
+                            matchedModels.push({...model, chapterName: ch.title});
+                        }
+                    });
+                }
+            });
+
+            emptyState.classList.add('hidden');
+            modelsPanel.classList.remove('hidden');
+            modelsPanel.classList.add('flex');
+            selectedChapterTitle.innerHTML = `<i data-lucide="search" class="w-6 h-6 text-purple-400"></i> Search Results`;
+            
+            modelsListContainer.innerHTML = '';
+            if (matchedModels.length > 0) {
+                matchedModels.forEach((model) => {
+                    const card = createModelCardHTML(model, true);
+                    modelsListContainer.appendChild(card);
+                    scrollObserver.observe(card); // Trigger scroll animation
+                });
+            } else {
+                modelsListContainer.innerHTML = `<div class="p-6 bg-black/30 rounded-xl border border-white/5 text-center text-slate-500 animate-fade-in opacity-0" style="animation-fill-mode: forwards;"><p>No models found matching "${query}".</p></div>`;
+            }
+            lucide.createIcons();
+        }
+
+        function createModelCardHTML(model, isSearchResult = false) {
+            const card = document.createElement('div');
+            // Changed from animate-slide-up to scroll-animate
+            card.className = "glass-card bg-slate-900/80 border border-white/5 p-5 rounded-2xl flex flex-col md:flex-row gap-6 items-start md:items-center justify-between hover:border-white/10 group scroll-animate";
+            
+            let chapterBadge = isSearchResult ? `<div class="text-[10px] text-purple-500 font-bold uppercase tracking-widest mb-1.5">${model.chapterName}</div>` : '';
+            
+            // Render UI Tag
+            let fileDisplay = model.isSketchfab ? `<i data-lucide="globe" class="w-3 h-3 text-pink-400"></i> Sketchfab Embed` : `<i data-lucide="box" class="w-3 h-3"></i> Local Model`;
+
+            // Build Smart Query Parameters for Simulator
+            let queryParams = `autoStart=true&name=${encodeURIComponent(model.name)}&desc=${encodeURIComponent(model.desc)}`;
+            if (model.isSketchfab) {
+                queryParams += `&embed=${encodeURIComponent(model.embed)}`;
+            } else {
+                queryParams += `&model=${encodeURIComponent(model.file)}`;
+            }
+
+            card.innerHTML = `
+                <div class="flex-1 flex gap-4">
+                    <div class="hidden sm:flex w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center shrink-0 text-slate-400 group-hover:text-purple-400 group-hover:border-purple-500/30 group-hover:bg-purple-500/10 transition-colors">
+                        <i data-lucide="${model.icon}" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        ${chapterBadge}
+                        <h4 class="text-white font-bold text-lg mb-1 group-hover:text-purple-300 transition-colors">${model.name}</h4>
+                        <p class="text-slate-400 text-sm mb-3">${model.desc}</p>
+                        <div class="inline-flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-lg px-3 py-1 font-mono text-xs text-purple-300 truncate max-w-xs shadow-inner">
+                            ${fileDisplay}
+                        </div>
+                    </div>
+                </div>
+                <a href="bio/simulator.html?${queryParams}" class="group/btn relative overflow-hidden px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-colors shrink-0 flex items-center gap-2 border border-white/5 text-sm shadow-md hover:shadow-purple-500/20 w-full md:w-auto justify-center">
+                    <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover/btn:animate-shimmer"></div>
+                    <i data-lucide="eye" class="w-4 h-4 fill-current relative z-10"></i> 
+                    <span class="relative z-10">View in 3D</span>
+                </a>
+            `;
+            return card;
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            // Automatically select Class 10 and load its chapters
+            document.getElementById('class-select').value = "10";
+            loadChapters();
+        };
+
+    </script>
+
+    <!-- FIREBASE INIT (Auth Protection Only) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        if (typeof firebaseConfig !== 'undefined') {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    window.location.href = "login.html"; 
+                } else {
+                    document.getElementById('app-body').classList.remove('hidden');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

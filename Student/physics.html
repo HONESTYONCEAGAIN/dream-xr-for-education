@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Engine - Dream XR</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 4s linear infinite'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Background Pattern */
+        .bg-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.07) 1px, transparent 0);
+            background-size: 30px 30px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(249, 115, 22, 0.5); /* Orange hover for physics */
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white font-sans overflow-hidden selection:bg-cyan-500/30 flex h-screen">
+
+    <!-- Ambient Background Effects -->
+    <div class="fixed inset-0 z-0 opacity-30 pointer-events-none bg-pattern"></div>
+    <div class="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-purple-700/20 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-cyan-700/15 rounded-full blur-[120px] z-0 pointer-events-none"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex flex-col relative z-20 shrink-0 shadow-[5px_0_30px_rgba(0,0,0,0.3)]">
+        
+        <!-- Logo Area -->
+        <div class="h-24 flex items-center px-6 border-b border-white/10 gap-4 shrink-0">
+            <div class="p-2.5 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                <i data-lucide="hexagon" class="text-white w-7 h-7 animate-pulse"></i>
+            </div>
+            
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 pb-1">
+                    Dream XR
+                </h1>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto py-8 px-4 flex flex-col gap-3">
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Main Menu</p>
+            
+            <a href="index.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Dashboard</span>
+            </a>
+            
+            <a href="chemistry.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="flask-conical" class="w-5 h-5 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Chemistry Lab</span>
+            </a>
+            
+            <!-- Active State -->
+            <a href="physics.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[inset_0_0_15px_rgba(34,211,238,0.1)] transition-all">
+                <i data-lucide="atom" class="w-5 h-5 animate-spin-slow"></i>
+                <span class="font-bold text-sm">Physics Engine</span>
+            </a>
+            
+            <a href="bio.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="dna" class="w-5 h-5 group-hover:text-purple-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Biology 3D</span>
+            </a>
+
+            <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2">Tools & AI</p>
+            
+            <a href="aitutor.html" class="flex items-center justify-between px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bot" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    <span class="font-semibold text-sm">AI Tutor</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </a>
+            
+            <a href="labhistory.html" class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="history" class="w-5 h-5 group-hover:text-blue-400 transition-colors"></i>
+                <span class="font-semibold text-sm">Lab History</span>
+            </a>
+        </div>
+
+        <!-- Sidebar Footer / Settings -->
+        <div class="p-6 border-t border-white/10 bg-black/20 shrink-0">
+            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-all group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                <span class="font-semibold text-sm">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col relative z-10 overflow-hidden">
+        
+        <!-- TOP BAR -->
+        <header class="h-24 bg-slate-950/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between px-10 shrink-0">
+            <!-- Search Bar -->
+            <div class="hidden lg:flex items-center bg-white/5 border border-white/10 rounded-full px-5 py-2.5 w-[400px] focus-within:border-cyan-400/50 focus-within:bg-white/10 transition-all shadow-inner">
+                <i data-lucide="search" class="w-5 h-5 text-slate-400 mr-3"></i>
+                <input type="text" placeholder="Search simulations..." class="bg-transparent text-sm text-white w-full focus:outline-none placeholder:text-slate-500 font-medium">
+            </div>
+
+            <!-- Right side: Notifications & Profile -->
+            <div class="flex items-center gap-6 ml-auto">
+                <button class="relative p-2 text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+                </button>
+
+                <div class="w-11 h-11 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center overflow-hidden cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.4)] hover:scale-105 transition-transform ml-2">
+                    <i data-lucide="user" class="w-5 h-5 text-purple-300"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- PHYSICS COMING SOON CONTENT (Full space utilization) -->
+        <main class="flex-1 overflow-y-auto relative">
+            <!-- Construction Top Border across the whole main area -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-400 via-red-500 to-orange-400"></div>
+
+            <div class="min-h-full px-10 py-16 max-w-5xl mx-auto flex flex-col items-center text-center">
+                
+                <!-- Animated Atom Icon -->
+                <div class="relative w-32 h-32 bg-orange-500/10 rounded-[2.5rem] mx-auto flex items-center justify-center border border-orange-500/30 mb-10 shadow-[0_0_50px_rgba(249,115,22,0.15)]">
+                    <div class="absolute inset-0 border border-orange-400/50 rounded-[2.5rem] animate-ping opacity-20"></div>
+                    <i data-lucide="atom" class="w-16 h-16 text-orange-400 animate-spin-slow"></i>
+                </div>
+
+                <h2 class="text-5xl font-extrabold text-white mb-6 tracking-tight">Physics Engine <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">Locked</span></h2>
+                
+                <p class="text-slate-400 text-xl mb-6 leading-relaxed max-w-3xl">
+                    Our AI models are currently being trained on real-time collision, optics, and circuit logic. Soon, you will be able to build custom physics simulations right here!
+                </p>
+                <p class="text-cyan-400 font-semibold mb-12 text-lg">Till then, explore other things from the dashboard!</p>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-center gap-6 relative z-10 mb-8">
+                    <a href="index.html" class="inline-flex items-center gap-3 px-10 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full font-bold transition-all hover:-translate-y-1 text-lg">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i> Back to Dashboard
+                    </a>
+                    <button class="inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white shadow-[0_0_25px_rgba(249,115,22,0.4)] rounded-full font-bold transition-all hover:-translate-y-1 text-lg">
+                        <i data-lucide="bell-ring" class="w-5 h-5"></i> Notify Me
+                    </button>
+                </div>
+                
+            </div>
+            
+        </main>
+    </div>
+
+    <!-- SCRIPT SECTION -->
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

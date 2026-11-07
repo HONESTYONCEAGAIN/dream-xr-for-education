@@ -1,0 +1,8 @@
+{
+  "name": "dream-xr",
+  "version": "1.0.0",
+  "description": "Dream XR Web Platform",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

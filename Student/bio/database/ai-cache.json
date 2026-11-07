@@ -1,0 +1,202 @@
+{
+  "Heart": {
+    "default": {
+      "difficulty": "⭐⭐⭐",
+      "classLevel": "Class 10",
+      "summary": "The human heart is a hollow, muscular organ that pumps blood through the circulatory system. It consists of four distinct chambers that separate oxygenated and deoxygenated blood.",
+      "components": [
+        {
+          "name": "Left Ventricle",
+          "function": "Pumps oxygen-rich blood to the entire body through the aorta under high pressure.",
+          "boardTip": "Left ventricle has the thickest muscular wall among all 4 chambers.",
+          "funFact": "Generates enough force to squirt blood up to 30 feet!"
+        },
+        {
+          "name": "Right Ventricle",
+          "function": "Pumps oxygen-depleted blood to the lungs via the pulmonary artery.",
+          "boardTip": "Right side always handles DEOXYGENATED blood.",
+          "funFact": "Pumps blood only to the nearby lungs, so its wall is thinner."
+        },
+        {
+          "name": "Atria (Left & Right)",
+          "function": "Receiving chambers for blood returning from body organs and lungs.",
+          "boardTip": "Atria push blood only down into the ventricles, requiring thin walls.",
+          "funFact": "The word atrium comes from Latin meaning entrance hall."
+        },
+        {
+          "name": "Valves (Tricuspid & Bicuspid)",
+          "function": "Flaps of tissue preventing backflow, keeping blood flowing in one direction.",
+          "boardTip": "Bicuspid (Mitral) valve is on the Left; Tricuspid valve is on the Right.",
+          "funFact": "The 'lub-dub' heart sound is caused by valves snapping shut."
+        }
+      ],
+      "deepDive": "Double Circulation involves two separate circuits: Pulmonary (Heart -> Lungs -> Heart) and Systemic (Heart -> Body -> Heart). This double circulation prevents mixing of oxygenated and deoxygenated blood, giving warm-blooded animals high energy efficiency.",
+      "examTip": "✓ Draw a clean 4-box block diagram of the heart.\n✓ Label Pulmonary Artery (carries deoxygenated blood) and Pulmonary Vein (carries oxygenated blood).\n✓ Explain why ventricular walls are thicker than atrial walls.",
+      "realWorld": "Artificial pacemakers are medical devices implanted when the SA node fails, producing rhythmic electrical signals to keep the heart beating."
+    },
+    "child": {
+      "difficulty": "⭐",
+      "classLevel": "Class 5",
+      "summary": "Your heart is a super energetic pump inside your chest that works 24/7 without taking any break!",
+      "components": [
+        {
+          "name": "Left Room (Ventricle)",
+          "function": "Pushes fresh oxygenated blood all the way down to your toes!",
+          "boardTip": "It's the strongest room in your heart!",
+          "funFact": "It squeezes hard like a water squirt gun!"
+        },
+        {
+          "name": "Right Room (Ventricle)",
+          "function": "Sends tired blood back to your lungs so you can breathe fresh air.",
+          "boardTip": "Sends blood right next door to the lungs.",
+          "funFact": "Lungs recharge the blood with fresh oxygen!"
+        }
+      ],
+      "deepDive": "Think of your heart as a two-story house with 4 rooms. Blood comes in through the top rooms, drops to the bottom rooms, and gets launched out like a rocket!",
+      "examTip": "Remember the heart has 4 rooms: 2 top and 2 bottom!",
+      "realWorld": "Exercising makes your heart pump faster and stronger, just like running builds muscle in your legs!"
+    },
+    "board": {
+      "difficulty": "⭐⭐⭐⭐",
+      "classLevel": "Class 10 CBSE / ICSE",
+      "summary": "The human heart is a muscular organ enclosed in a double-walled membrane called pericardium, responsible for double circulation.",
+      "components": [
+        {
+          "name": "Sinoatrial (SA) Node",
+          "function": "Acts as the natural pacemaker initiating electrical impulses for cardiac contraction.",
+          "boardTip": "Located in the right atrium; frequently asked 1-mark question.",
+          "funFact": "Fires around 70-80 impulse signals per minute."
+        },
+        {
+          "name": "Aorta",
+          "function": "Largest artery carrying oxygenated blood from left ventricle to systemic arteries.",
+          "boardTip": "High blood pressure inside aorta requires thick elastic walls.",
+          "funFact": "The aorta is about the thickness of a garden hose."
+        }
+      ],
+      "deepDive": "Double Circulation involves: 1) Pulmonary Circuit (Right Ventricle -> Pulmonary Artery -> Lungs -> Pulmonary Veins -> Left Atrium). 2) Systemic Circuit (Left Ventricle -> Aorta -> Body tissues -> Vena Cava -> Right Atrium).",
+      "examTip": "✓ Differentiate Arteries vs Veins (Wall thickness, Valves, Pressure).\n✓ Define Pericardium and Pericardial Fluid function.\n✓ Explain why double circulation prevents mixing of blood.",
+      "realWorld": "Coronary Artery Bypass Grafting (CABG) is performed when blood vessels supplying the heart muscle become clogged."
+    },
+    "hindi": {
+      "difficulty": "⭐⭐⭐",
+      "classLevel": "कक्षा 10",
+      "summary": "मानव हृदय एक मांसपेशीय अंग है जो पूरे शरीर में रक्त पंप करता है। इसमें चार कक्ष होते हैं जो ऑक्सीजन युक्त और ऑक्सीजन रहित रक्त को अलग रखते हैं।",
+      "components": [
+        {
+          "name": "बायां निलय (Left Ventricle)",
+          "function": "महाधमनी (Aorta) के माध्यम से पूरे शरीर में ऑक्सीजन युक्त रक्त पंप करता है।",
+          "boardTip": "दाएं निलय की तुलना में बाएं निलय की दीवार अधिक मोटी होती है।",
+          "funFact": "यह 30 फीट दूर तक रक्त छिड़कने जितना दबाव बना सकता है।"
+        },
+        {
+          "name": "दायां निलय (Right Ventricle)",
+          "function": "फुफ्फुस धमनियों के माध्यम से फेफड़ों में बिना ऑक्सीजन वाला रक्त भेजता है।",
+          "boardTip": "दायां भाग हमेशा ऑक्सीजन रहित रक्त संभालता है।",
+          "funFact": "यह केवल पास के फेफड़ों तक ही रक्त पहुंचाता है।"
+        }
+      ],
+      "deepDive": "मानव में दोहरा परिसंचरण (Double Circulation) होता है। रक्त एक चक्कर पूरा करने के लिए हृदय से दो बार गुजरता है - एक बार फेफड़ों के लिए और दूसरी बार पूरे शरीर के लिए।",
+      "examTip": "✓ चार कोष्ठकों के चित्र का अभ्यास करें।\n✓ धमनी और सिरा में अंतर याद रखें।",
+      "realWorld": "पेसमेकर एक छोटा उपकरण है जो दिल की धड़कन को नियंत्रित करने के लिए छाती में लगाया जाता है।"
+    },
+    "hinglish": {
+      "difficulty": "⭐⭐⭐",
+      "classLevel": "Class 10",
+      "summary": "Human heart ek powerful muscle pump hai jo poori body mein blood circulate karta hai. Isme 4 chambers hote hain taaki pure aur impure blood mix na ho.",
+      "components": [
+        {
+          "name": "Left Ventricle",
+          "function": "Aorta ke through pure (oxygenated) blood poori body me pump karta hai.",
+          "boardTip": "Dhyan do: Iski wall sabse thick hoti hai kyunki isse poori body me blood bhejna hota hai.",
+          "funFact": "Iska pressure itna hota hai ki blood 30 feet door tak ja sakta hai!"
+        },
+        {
+          "name": "Right Ventricle",
+          "function": "Impure blood ko lungs me bhejta hai oxygen lene ke liye.",
+          "boardTip": "Board tip: Right side matlab hamesha deoxygenated blood.",
+          "funFact": "Lungs paas me hote hain, isliye iski wall thodi patli hoti hai."
+        }
+      ],
+      "deepDive": "Samjho ki Double Circulation kya hai! Blood heart me 2 baar aata hai. Pehle lungs se fresh oxygen lene, aur phir poori body ko dene ke baad wapas return hota hai.",
+      "examTip": "✓ Board exam me 'Double Circulation' ka 3-mark Question pakka aata hai!\n✓ Lub-Dub sound valves band hone par hoti hai.",
+      "realWorld": "Jab kisi ki heart rate bohot slow ho jaati hai, toh doctors Artificial Pacemaker lagate hain."
+    },
+    "mcq": {
+      "difficulty": "⭐⭐⭐",
+      "classLevel": "Class 10 Practice",
+      "summary": "Check your understanding of Cardiac Anatomy through these practice MCQs.",
+      "components": [
+        {
+          "name": "Q1: Which chamber pumps blood to the entire body?",
+          "function": "Option A: Right Atrium | Option B: Left Ventricle (Correct) | Option C: Right Ventricle | Option D: Left Atrium",
+          "boardTip": "Correct Answer: B (Left Ventricle)",
+          "funFact": "Left Ventricle needs maximum muscle force to push blood to distal organs."
+        },
+        {
+          "name": "Q2: What is the primary function of Heart Valves?",
+          "function": "Option A: Produce oxygen | Option B: Prevent backflow of blood (Correct) | Option C: Increase blood pressure | Option D: Filter blood",
+          "boardTip": "Correct Answer: B (Prevent Backflow)",
+          "funFact": "Valve closure causes the Lub-Dub heartbeat sound."
+        }
+      ],
+      "deepDive": "Solve multiple choice questions to strengthen concept clarity for board examinations.",
+      "examTip": "Read options carefully before selecting. Eliminate wrong choices first.",
+      "realWorld": "Medical entrance tests like NEET heavily emphasize MCQ practice."
+    }
+  },
+  "Brain": {
+    "default": {
+      "difficulty": "⭐⭐⭐⭐",
+      "classLevel": "Class 10",
+      "summary": "The human brain is the central control unit of the nervous system, responsible for thought, memory, emotion, touch, motor skills, and regulating body processes.",
+      "components": [
+        {
+          "name": "Cerebrum",
+          "function": "Responsible for high-level thinking, memory, intelligence, and voluntary actions.",
+          "boardTip": "Largest part of the brain; divided into left and right hemispheres.",
+          "funFact": "Contains about 86 billion neurons."
+        },
+        {
+          "name": "Cerebellum",
+          "function": "Controls posture, balance, precision, and muscular coordination.",
+          "boardTip": "Known as the 'little brain' located at the base of the skull.",
+          "funFact": "Alcohol affects the cerebellum first, causing loss of physical balance."
+        },
+        {
+          "name": "Medulla Oblongata",
+          "function": "Controls involuntary reflexes such as breathing, heart rate, swallowing, and blood pressure.",
+          "boardTip": "Part of the hindbrain connecting directly to the spinal cord.",
+          "funFact": "Damage to the medulla is almost instantly fatal."
+        }
+      ],
+      "deepDive": "The brain is protected by 3 layer membranes called meninges and cushioned by Cerebrospinal Fluid (CSF). It consumes nearly 20% of the body's total oxygen supply.",
+      "examTip": "✓ Label Forebrain, Midbrain, and Hindbrain correctly.\n✓ Remember: Cerebrum = Voluntary/Thinking, Cerebellum = Balance, Medulla = Involuntary.",
+      "realWorld": "Electroencephalography (EEG) measures electrical activity in the brain to diagnose epilepsy and sleep disorders."
+    }
+  },
+  "Cell": {
+    "default": {
+      "difficulty": "⭐⭐",
+      "classLevel": "Class 9/10",
+      "summary": "The cell is the basic structural, functional, and biological unit of all known organisms.",
+      "components": [
+        {
+          "name": "Mitochondria",
+          "function": "Generates cellular energy in the form of ATP through cellular respiration.",
+          "boardTip": "Always referred to as the 'Powerhouse of the Cell'.",
+          "funFact": "Mitochondria have their own independent DNA and ribosomes."
+        },
+        {
+          "name": "Nucleus",
+          "function": "Contains genetic material (DNA) and controls all cellular activities.",
+          "boardTip": "Acts as the command center or 'Brain of the Cell'.",
+          "funFact": "Red blood cells in mammals mature without a nucleus to carry more oxygen."
+        }
+      ],
+      "deepDive": "Eukaryotic cells contain membrane-bound organelles while prokaryotic cells lack membrane-bound organelles.",
+      "examTip": "✓ Compare Plant Cell vs Animal Cell (Cell Wall, Vacuoles, Plastids).\n✓ Define Diffusion and Osmosis clearly.",
+      "realWorld": "Stem cell research allows scientists to grow organ tissues to cure degenerative diseases."
+    }
+  }
+}
